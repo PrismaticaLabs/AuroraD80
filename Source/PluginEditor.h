@@ -65,6 +65,19 @@ private:
                                bool shouldDrawButtonAsDown) override;
     };
 
+    class PresetArrowButton final : public juce::Button
+    {
+    public:
+        explicit PresetArrowButton (const juce::String& arrowText);
+
+        void paintButton (juce::Graphics& g,
+                          bool shouldDrawButtonAsHighlighted,
+                          bool shouldDrawButtonAsDown) override;
+
+    private:
+        juce::String arrow;
+    };
+
     enum class ValueFormat
     {
         Percent,
@@ -81,6 +94,10 @@ private:
                           const juce::String& labelText,
                           ValueFormat valueFormat);
     void configureSyncControls();
+    void configurePresetBrowser();
+    void showPreviousPreset();
+    void showNextPreset();
+    juce::String getCurrentPresetName() const;
     void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, ValueFormat valueFormat);
     void updateTimeValueLabel();
     void timerCallback() override;
@@ -126,6 +143,11 @@ private:
 
     juce::ToggleButton syncButton;
     juce::ComboBox divisionBox;
+    PresetArrowButton previousPresetButton { "<" };
+    PresetArrowButton nextPresetButton { ">" };
+    juce::TextButton presetNameButton;
+    std::vector<juce::String> presetNames { "Deep Horizon", "Neon Rain", "Frozen Echoes", "Midnight Bloom", "Ghost Signal", "Infinite Sky" };
+    int currentPresetIndex = 0;
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> timeAttachment;

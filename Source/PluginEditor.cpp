@@ -28,6 +28,7 @@ namespace
     struct RackLayout
     {
         juce::Rectangle<int> header;
+        juce::Rectangle<int> presetBrowser;
         juce::Rectangle<int> display;
         juce::Rectangle<int> input;
         juce::Rectangle<int> delay;
@@ -41,7 +42,8 @@ namespace
     {
         RackLayout layout;
         layout.header = bounds.removeFromTop (60);
-        layout.display = { 250, 74, 300, 48 };
+        layout.presetBrowser = { 250, 64, 300, 20 };
+        layout.display = { 250, 88, 300, 48 };
         layout.input = { 18, 138, 110, 124 };
         layout.delay = { 138, 138, 300, 124 };
         layout.tone = { 448, 138, 190, 124 };
@@ -245,6 +247,32 @@ void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawToggleButton (juce::G
                 false);
 }
 
+AuroraD80AudioProcessorEditor::PresetArrowButton::PresetArrowButton (const juce::String& arrowText)
+    : juce::Button (arrowText), arrow (arrowText)
+{
+    setMouseCursor (juce::MouseCursor::PointingHandCursor);
+}
+
+void AuroraD80AudioProcessorEditor::PresetArrowButton::paintButton (juce::Graphics& g,
+                                                                    bool shouldDrawButtonAsHighlighted,
+                                                                    bool shouldDrawButtonAsDown)
+{
+    const auto bounds = getLocalBounds().toFloat().reduced (0.5f);
+
+    g.setGradientFill (juce::ColourGradient (juce::Colour (shouldDrawButtonAsDown ? 0xff15100e : 0xff28231f),
+                                             bounds.getCentreX(), bounds.getY(),
+                                             juce::Colour (shouldDrawButtonAsDown ? 0xff0e0b0a : 0xff151211),
+                                             bounds.getCentreX(), bounds.getBottom(), false));
+    g.fillRoundedRectangle (bounds, 4.0f);
+
+    g.setColour (juce::Colour (shouldDrawButtonAsHighlighted ? softOrange : panelBorder));
+    g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+
+    g.setColour (juce::Colour (shouldDrawButtonAsDown ? 0xffff7a22 : orange));
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    g.drawText (arrow, getLocalBounds(), juce::Justification::centred, false);
+}
+
 //==============================================================================
 AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
@@ -261,6 +289,7 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     configureSlider (mixSlider, mixLabel, mixValueLabel, "Mix", ValueFormat::Percent);
     configureSlider (outputSlider, outputLabel, outputValueLabel, "Output", ValueFormat::Percent);
     configureSyncControls();
+    configurePresetBrowser();
 
     timeSlider.onValueChange = [this]
     {
@@ -372,6 +401,73 @@ void AuroraD80AudioProcessorEditor::configureSyncControls()
     addAndMakeVisible (divisionBox);
 }
 
+void AuroraD80AudioProcessorEditor::configurePresetBrowser()
+{
+    previousPresetButton.onClick = [this]
+    {
+        showPreviousPreset();
+    };
+
+    nextPresetButton.onClick = [this]
+    {
+        showNextPreset();
+    };
+
+    presetNameButton.setButtonText ({});
+    presetNameButton.setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    presetNameButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    presetNameButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    presetNameButton.setColour (juce::TextButton::textColourOffId, juce::Colours::transparentBlack);
+    presetNameButton.setColour (juce::TextButton::textColourOnId, juce::Colours::transparentBlack);
+    presetNameButton.onClick = [this]
+    {
+        juce::PopupMenu menu;
+
+        for (auto index = 0; index < static_cast<int> (presetNames.size()); ++index)
+            menu.addItem (index + 1, presetNames[static_cast<size_t> (index)], true, index == currentPresetIndex);
+
+        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&presetNameButton),
+                            [this] (int selectedId)
+                            {
+                                if (selectedId <= 0)
+                                    return;
+
+                                currentPresetIndex = selectedId - 1;
+                                repaint();
+                            });
+    };
+
+    addAndMakeVisible (previousPresetButton);
+    addAndMakeVisible (nextPresetButton);
+    addAndMakeVisible (presetNameButton);
+}
+
+void AuroraD80AudioProcessorEditor::showPreviousPreset()
+{
+    if (presetNames.empty())
+        return;
+
+    currentPresetIndex = (currentPresetIndex + static_cast<int> (presetNames.size()) - 1) % static_cast<int> (presetNames.size());
+    repaint();
+}
+
+void AuroraD80AudioProcessorEditor::showNextPreset()
+{
+    if (presetNames.empty())
+        return;
+
+    currentPresetIndex = (currentPresetIndex + 1) % static_cast<int> (presetNames.size());
+    repaint();
+}
+
+juce::String AuroraD80AudioProcessorEditor::getCurrentPresetName() const
+{
+    if (presetNames.empty())
+        return {};
+
+    return presetNames[static_cast<size_t> (currentPresetIndex)];
+}
+
 void AuroraD80AudioProcessorEditor::updateValueLabel (juce::Slider& slider,
                                                       juce::Label& valueLabel,
                                                       ValueFormat valueFormat)
@@ -455,6 +551,22 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xff3c3430));
     g.drawHorizontalLine (layout.header.getBottom(), 0.0f, static_cast<float> (getWidth()));
 
+    const auto presetBrowser = layout.presetBrowser.toFloat();
+    g.setColour (juce::Colour (0xff050404).withAlpha (0.45f));
+    g.fillRoundedRectangle (presetBrowser.translated (0.0f, 1.0f), 5.0f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff28231f), presetBrowser.getCentreX(), presetBrowser.getY(),
+                                             juce::Colour (0xff141110), presetBrowser.getCentreX(), presetBrowser.getBottom(), false));
+    g.fillRoundedRectangle (presetBrowser, 5.0f);
+    g.setColour (juce::Colour (0xff3e352f));
+    g.drawRoundedRectangle (presetBrowser, 5.0f, 1.0f);
+    g.setColour (juce::Colour (0x28ff6a1a));
+    g.drawRoundedRectangle (presetBrowser.reduced (2.0f), 3.5f, 0.8f);
+
+    auto presetNameArea = layout.presetBrowser.reduced (42, 1);
+    g.setColour (juce::Colour (orange));
+    g.setFont (juce::FontOptions (13.5f, juce::Font::bold));
+    g.drawText (getCurrentPresetName(), presetNameArea, juce::Justification::centred, false);
+
     const auto display = layout.display.toFloat();
     const auto syncIsEnabled = syncButton.getToggleState();
     auto displayValue = syncIsEnabled ? divisionBox.getText()
@@ -465,32 +577,51 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
 
     const auto displayMode = syncIsEnabled ? juce::String ("SYNC") : juce::String ("MANUAL");
 
-    g.setColour (juce::Colour (0xff050505));
-    g.fillRoundedRectangle (display, 5.0f);
+    g.setColour (juce::Colour (0xff050404).withAlpha (0.55f));
+    g.fillRoundedRectangle (display.translated (0.0f, 2.0f), 8.0f);
 
-    g.setColour (juce::Colour (0x24ff4a18));
-    g.fillRoundedRectangle (display.reduced (3.0f), 3.0f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff383330), display.getCentreX(), display.getY(),
+                                             juce::Colour (0xff11100f), display.getCentreX(), display.getBottom(), false));
+    g.fillRoundedRectangle (display, 8.0f);
 
-    g.setColour (juce::Colour (0xff070707));
-    g.fillRoundedRectangle (display.reduced (5.0f), 3.0f);
+    g.setColour (juce::Colour (0xff080707));
+    g.drawRoundedRectangle (display, 8.0f, 2.0f);
 
-    g.setColour (juce::Colour (0xff403833));
-    g.drawRoundedRectangle (display, 5.0f, 1.0f);
-    g.setColour (juce::Colour (0x35ff6a1a));
-    g.drawRoundedRectangle (display.reduced (3.0f), 3.0f, 1.0f);
+    g.setColour (juce::Colour (0x33ff6a1a));
+    g.drawRoundedRectangle (display.reduced (2.0f), 6.5f, 1.0f);
 
-    auto displayTextArea = layout.display.reduced (12, 5);
-    auto modeArea = displayTextArea.removeFromTop (13);
+    const auto screen = display.reduced (8.0f, 7.0f);
+    g.setColour (juce::Colour (0xff020202));
+    g.fillRoundedRectangle (screen, 4.5f);
 
-    g.setColour (juce::Colour (0xff8d8580));
-    g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff080605), screen.getCentreX(), screen.getY(),
+                                             juce::Colour (0xff000000), screen.getCentreX(), screen.getBottom(), false));
+    g.fillRoundedRectangle (screen.reduced (1.0f), 4.0f);
+
+    g.setColour (juce::Colour (0x18ff4a18));
+    g.fillRoundedRectangle (screen.reduced (4.0f, 3.0f), 3.0f);
+
+    g.setColour (juce::Colour (0xff020202));
+    g.fillRoundedRectangle (screen.reduced (6.0f, 5.0f), 2.5f);
+
+    g.setColour (juce::Colour (0xff1a1513));
+    g.drawRoundedRectangle (screen, 4.5f, 1.0f);
+    g.setColour (juce::Colour (0x28ff7a22));
+    g.drawRoundedRectangle (screen.reduced (1.5f), 3.5f, 0.8f);
+
+    auto displayTextArea = screen.toNearestInt().reduced (18, 5);
+    auto modeArea = displayTextArea.removeFromTop (9);
+    displayTextArea.removeFromTop (4);
+
+    g.setColour (juce::Colour (0xff918984));
+    g.setFont (juce::FontOptions (7.5f, juce::Font::bold));
     g.drawText (displayMode, modeArea, juce::Justification::centred);
 
-    g.setFont (juce::FontOptions (25.0f, juce::Font::bold));
-    g.setColour (juce::Colour (0x44ff3a12));
+    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
+    g.setColour (juce::Colour (0x22ff3a12));
+    g.drawText (displayValue, displayTextArea.translated (0, 2), juce::Justification::centred);
+    g.setColour (juce::Colour (0x55ff4f18));
     g.drawText (displayValue, displayTextArea.translated (0, 1), juce::Justification::centred);
-    g.setColour (juce::Colour (0x66ff6a1a));
-    g.drawText (displayValue, displayTextArea, juce::Justification::centred);
     g.setColour (juce::Colour (0xffff7a22));
     g.drawText (displayValue, displayTextArea, juce::Justification::centred);
 
@@ -505,6 +636,11 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
 void AuroraD80AudioProcessorEditor::resized()
 {
     const auto layout = getRackLayout (getLocalBounds());
+
+    auto presetBrowser = layout.presetBrowser.reduced (3, 3);
+    previousPresetButton.setBounds (presetBrowser.removeFromLeft (28));
+    nextPresetButton.setBounds (presetBrowser.removeFromRight (28));
+    presetNameButton.setBounds (presetBrowser);
 
     layoutSingleKnobPanel (layout.input, inputSlider, inputLabel, inputValueLabel);
     layoutSingleKnobPanel (layout.output, outputSlider, outputLabel, outputValueLabel);
