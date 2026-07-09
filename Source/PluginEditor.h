@@ -60,6 +60,8 @@ private:
     juce::Slider highCutSlider;
     juce::Slider depthSlider;
     juce::Slider rateSlider;
+    juce::Slider driveSlider;
+    juce::Slider vintageSlider;
     juce::Slider feedbackSlider;
     juce::Slider mixSlider;
     juce::Slider outputSlider;
@@ -70,6 +72,8 @@ private:
     juce::Label highCutLabel;
     juce::Label depthLabel;
     juce::Label rateLabel;
+    juce::Label driveLabel;
+    juce::Label vintageLabel;
     juce::Label feedbackLabel;
     juce::Label mixLabel;
     juce::Label outputLabel;
@@ -80,6 +84,8 @@ private:
     juce::Label highCutValueLabel;
     juce::Label depthValueLabel;
     juce::Label rateValueLabel;
+    juce::Label driveValueLabel;
+    juce::Label vintageValueLabel;
     juce::Label feedbackValueLabel;
     juce::Label mixValueLabel;
     juce::Label outputValueLabel;
@@ -93,6 +99,8 @@ private:
     std::unique_ptr<SliderAttachment> highCutAttachment;
     std::unique_ptr<SliderAttachment> depthAttachment;
     std::unique_ptr<SliderAttachment> rateAttachment;
+    std::unique_ptr<SliderAttachment> driveAttachment;
+    std::unique_ptr<SliderAttachment> vintageAttachment;
     std::unique_ptr<SliderAttachment> feedbackAttachment;
     std::unique_ptr<SliderAttachment> mixAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;

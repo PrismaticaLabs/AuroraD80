@@ -49,6 +49,12 @@ namespace
         return delayBuffer.getSample (channel, index0)
              + ((delayBuffer.getSample (channel, index1) - delayBuffer.getSample (channel, index0)) * fraction);
     }
+
+    float nextNoiseSample (uint32_t& state)
+    {
+        state = (state * 1664525u) + 1013904223u;
+        return (static_cast<float> ((state >> 8) & 0x00ffffff) / 8388607.5f) - 1.0f;
+    }
 }
 
 //==============================================================================
@@ -89,6 +95,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout AuroraD80AudioProcessor::cre
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "modulationRate", 1 }, "Rate", juce::NormalisableRange<float> { 0.05f, 10.0f }, 0.35f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "drive", 1 }, "Drive", juce::NormalisableRange<float> { 0.0f, 100.0f }, 0.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "vintage", 1 }, "Vintage", juce::NormalisableRange<float> { 0.0f, 100.0f }, 0.0f));
 
     return layout;
 }
@@ -188,11 +200,17 @@ void AuroraD80AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     delayBuffer.clear();
     delayWritePosition = 0;
     lfoPhase = 0.0;
+    vintageSoftenState = { 0.0f, 0.0f };
+    noiseState = 0x12345678;
 
     smoothedModulationDepth.reset (sampleRate, 0.05);
     smoothedModulationRate.reset (sampleRate, 0.05);
+    smoothedDrive.reset (sampleRate, 0.05);
+    smoothedVintage.reset (sampleRate, 0.05);
     smoothedModulationDepth.setCurrentAndTargetValue (15.0f);
     smoothedModulationRate.setCurrentAndTargetValue (0.35f);
+    smoothedDrive.setCurrentAndTargetValue (0.0f);
+    smoothedVintage.setCurrentAndTargetValue (0.0f);
 
     const auto lowCutCoefficients = juce::IIRCoefficients::makeHighPass (currentSampleRate, 120.0);
     const auto highCutCoefficients = juce::IIRCoefficients::makeLowPass (currentSampleRate, 12000.0);
@@ -257,6 +275,8 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     const auto highCutHz = parameters.getRawParameterValue ("highCutHz")->load();
     const auto modulationDepth = parameters.getRawParameterValue ("modulationDepth")->load();
     const auto modulationRate = parameters.getRawParameterValue ("modulationRate")->load();
+    const auto drive = parameters.getRawParameterValue ("drive")->load();
+    const auto vintage = parameters.getRawParameterValue ("vintage")->load();
 
     if (syncEnabled)
     {
@@ -285,6 +305,8 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     smoothedModulationDepth.setTargetValue (modulationDepth);
     smoothedModulationRate.setTargetValue (modulationRate);
+    smoothedDrive.setTargetValue (drive);
+    smoothedVintage.setTargetValue (vintage);
 
     const auto delayBufferSize = delayBuffer.getNumSamples();
     const auto baseDelaySamples = juce::jlimit (1, delayBufferSize - 1,
@@ -296,6 +318,8 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     {
         const auto depthPercent = smoothedModulationDepth.getNextValue();
         const auto rateHz = smoothedModulationRate.getNextValue();
+        const auto driveAmount = smoothedDrive.getNextValue() / 100.0f;
+        const auto vintageAmount = smoothedVintage.getNextValue() / 100.0f;
         const auto modulationIsActive = depthPercent > 0.0001f;
         auto effectiveDelaySamples = static_cast<double> (baseDelaySamples);
         auto readPosition = (delayWritePosition + delayBufferSize - baseDelaySamples) % delayBufferSize;
@@ -312,11 +336,35 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             const auto input = buffer.getSample (channel, sample) * inputGain;
             const auto delayed = modulationIsActive ? readDelaySampleLinear (delayBuffer, channel, delayWritePosition, effectiveDelaySamples)
                                                     : delayBuffer.getSample (channel, readPosition);
-            const auto filteredDelayed = highCutFilters[channel].processSingleSampleRaw (
+            auto wetSignal = highCutFilters[channel].processSingleSampleRaw (
                 lowCutFilters[channel].processSingleSampleRaw (delayed));
-            const auto output = ((input * (1.0f - mix)) + (filteredDelayed * mix)) * outputGain;
 
-            delayBuffer.setSample (channel, delayWritePosition, input + (filteredDelayed * feedback));
+            if (driveAmount > 0.0001f)
+            {
+                const auto driveGain = 1.0f + (driveAmount * 5.0f);
+                const auto saturated = std::tanh (wetSignal * driveGain) / std::tanh (driveGain);
+                wetSignal = wetSignal + ((saturated - wetSignal) * driveAmount);
+            }
+
+            if (vintageAmount > 0.0001f)
+            {
+                const auto softeningCoefficient = juce::jmap (vintageAmount, 0.95f, 0.28f);
+                vintageSoftenState[channel] += softeningCoefficient * (wetSignal - vintageSoftenState[channel]);
+
+                const auto bitLevels = juce::jmap (vintageAmount, 65536.0f, 2048.0f);
+                auto degraded = std::round (vintageSoftenState[channel] * bitLevels) / bitLevels;
+                degraded += nextNoiseSample (noiseState) * vintageAmount * 0.00008f;
+
+                wetSignal = wetSignal + ((degraded - wetSignal) * vintageAmount);
+            }
+            else
+            {
+                vintageSoftenState[channel] = wetSignal;
+            }
+
+            const auto output = ((input * (1.0f - mix)) + (wetSignal * mix)) * outputGain;
+
+            delayBuffer.setSample (channel, delayWritePosition, input + (wetSignal * feedback));
             buffer.setSample (channel, sample, output);
         }
 

@@ -21,6 +21,8 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     configureSlider (highCutSlider, highCutLabel, highCutValueLabel, "HIGH CUT", ValueFormat::KHz);
     configureSlider (depthSlider, depthLabel, depthValueLabel, "DEPTH", ValueFormat::ModPercent);
     configureSlider (rateSlider, rateLabel, rateValueLabel, "RATE", ValueFormat::RateHz);
+    configureSlider (driveSlider, driveLabel, driveValueLabel, "DRIVE", ValueFormat::ModPercent);
+    configureSlider (vintageSlider, vintageLabel, vintageValueLabel, "VINTAGE", ValueFormat::ModPercent);
     configureSlider (feedbackSlider, feedbackLabel, feedbackValueLabel, "FEEDBACK", ValueFormat::Percent);
     configureSlider (mixSlider, mixLabel, mixValueLabel, "MIX", ValueFormat::Percent);
     configureSlider (outputSlider, outputLabel, outputValueLabel, "OUTPUT", ValueFormat::Percent);
@@ -37,6 +39,8 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     highCutAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "highCutHz", highCutSlider);
     depthAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "modulationDepth", depthSlider);
     rateAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "modulationRate", rateSlider);
+    driveAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "drive", driveSlider);
+    vintageAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "vintage", vintageSlider);
     feedbackAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "feedback", feedbackSlider);
     mixAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "mix", mixSlider);
     outputAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "outputGain", outputSlider);
@@ -49,6 +53,8 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     updateValueLabel (highCutSlider, highCutValueLabel, ValueFormat::KHz);
     updateValueLabel (depthSlider, depthValueLabel, ValueFormat::ModPercent);
     updateValueLabel (rateSlider, rateValueLabel, ValueFormat::RateHz);
+    updateValueLabel (driveSlider, driveValueLabel, ValueFormat::ModPercent);
+    updateValueLabel (vintageSlider, vintageValueLabel, ValueFormat::ModPercent);
     updateValueLabel (feedbackSlider, feedbackValueLabel, ValueFormat::Percent);
     updateValueLabel (mixSlider, mixValueLabel, ValueFormat::Percent);
     updateValueLabel (outputSlider, outputValueLabel, ValueFormat::Percent);
@@ -197,30 +203,48 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
 
 void AuroraD80AudioProcessorEditor::resized()
 {
-    auto controlsArea = getLocalBounds().withTrimmedTop (136).withTrimmedBottom (38).reduced (28, 0);
-    const auto controlWidth = controlsArea.getWidth() / 9;
+    auto controlsArea = getLocalBounds().withTrimmedTop (122).withTrimmedBottom (24).reduced (42, 0);
+    auto topRow = controlsArea.removeFromTop (134);
+    controlsArea.removeFromTop (4);
+    auto bottomRow = controlsArea.removeFromTop (134);
 
-    juce::Slider* sliders[] = { &inputSlider, &timeSlider, &lowCutSlider, &highCutSlider, &depthSlider, &rateSlider, &feedbackSlider, &mixSlider, &outputSlider };
-    juce::Label* nameLabels[] = { &inputLabel, &timeLabel, &lowCutLabel, &highCutLabel, &depthLabel, &rateLabel, &feedbackLabel, &mixLabel, &outputLabel };
-    juce::Label* valueLabels[] = { &inputValueLabel, &timeValueLabel, &lowCutValueLabel, &highCutValueLabel, &depthValueLabel, &rateValueLabel, &feedbackValueLabel, &mixValueLabel, &outputValueLabel };
-
-    for (auto index = 0; index < 9; ++index)
+    auto layoutControl = [] (juce::Rectangle<int> row,
+                             int index,
+                             int count,
+                             juce::Slider& slider,
+                             juce::Label& nameLabel,
+                             juce::Label& valueLabel) -> juce::Rectangle<int>
     {
-        auto controlBounds = controlsArea.removeFromLeft (controlWidth).reduced (5, 0);
-        auto centredBounds = controlBounds.withSizeKeepingCentre (76, controlBounds.getHeight());
+        const auto controlWidth = row.getWidth() / count;
+        auto controlBounds = row.withTrimmedLeft (controlWidth * index)
+                                .withWidth (controlWidth)
+                                .reduced (10, 0);
+        auto centredBounds = controlBounds.withSizeKeepingCentre (82, controlBounds.getHeight());
 
-        nameLabels[index]->setBounds (centredBounds.removeFromTop (22));
-        centredBounds.removeFromTop (5);
-        sliders[index]->setBounds (centredBounds.removeFromTop (104));
-        centredBounds.removeFromTop (3);
-        valueLabels[index]->setBounds (centredBounds.removeFromTop (22));
+        nameLabel.setBounds (centredBounds.removeFromTop (20));
+        centredBounds.removeFromTop (2);
+        slider.setBounds (centredBounds.removeFromTop (80));
+        centredBounds.removeFromTop (2);
+        valueLabel.setBounds (centredBounds.removeFromTop (20));
 
-        if (index == 1)
-        {
-            centredBounds.removeFromTop (7);
-            syncButton.setBounds (centredBounds.removeFromTop (22));
-            centredBounds.removeFromTop (5);
-            divisionBox.setBounds (centredBounds.removeFromTop (24));
-        }
-    }
+        return centredBounds;
+    };
+
+    layoutControl (topRow, 0, 6, inputSlider, inputLabel, inputValueLabel);
+    auto timeRemainder = layoutControl (topRow, 1, 6, timeSlider, timeLabel, timeValueLabel);
+    layoutControl (topRow, 2, 6, lowCutSlider, lowCutLabel, lowCutValueLabel);
+    layoutControl (topRow, 3, 6, highCutSlider, highCutLabel, highCutValueLabel);
+    layoutControl (topRow, 4, 6, depthSlider, depthLabel, depthValueLabel);
+    layoutControl (topRow, 5, 6, rateSlider, rateLabel, rateValueLabel);
+
+    timeRemainder.removeFromTop (3);
+    syncButton.setBounds (timeRemainder.removeFromTop (20));
+    timeRemainder.removeFromTop (3);
+    divisionBox.setBounds (timeRemainder.removeFromTop (23));
+
+    layoutControl (bottomRow, 0, 5, driveSlider, driveLabel, driveValueLabel);
+    layoutControl (bottomRow, 1, 5, vintageSlider, vintageLabel, vintageValueLabel);
+    layoutControl (bottomRow, 2, 5, feedbackSlider, feedbackLabel, feedbackValueLabel);
+    layoutControl (bottomRow, 3, 5, mixSlider, mixLabel, mixValueLabel);
+    layoutControl (bottomRow, 4, 5, outputSlider, outputLabel, outputValueLabel);
 }
