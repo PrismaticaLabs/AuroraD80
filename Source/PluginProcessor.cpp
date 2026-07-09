@@ -14,6 +14,7 @@
 namespace
 {
     constexpr double maxDelayTimeMs = 2000.0;
+    constexpr double maxModulationDepthMs = 20.0;
 
     double getDivisionMultiplier (int divisionIndex)
     {
@@ -28,6 +29,25 @@ namespace
             case 6:  return 4.0;        // 1 Bar
             default: return 1.0;
         }
+    }
+
+    float readDelaySampleLinear (const juce::AudioBuffer<float>& delayBuffer,
+                                 int channel,
+                                 int writePosition,
+                                 double delaySamples)
+    {
+        const auto bufferSize = delayBuffer.getNumSamples();
+        auto readPosition = static_cast<double> (writePosition) - delaySamples;
+
+        while (readPosition < 0.0)
+            readPosition += static_cast<double> (bufferSize);
+
+        const auto index0 = static_cast<int> (readPosition) % bufferSize;
+        const auto index1 = (index0 + 1) % bufferSize;
+        const auto fraction = static_cast<float> (readPosition - std::floor (readPosition));
+
+        return delayBuffer.getSample (channel, index0)
+             + ((delayBuffer.getSample (channel, index1) - delayBuffer.getSample (channel, index0)) * fraction);
     }
 }
 
@@ -63,6 +83,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout AuroraD80AudioProcessor::cre
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "highCutHz", 1 }, "High Cut", juce::NormalisableRange<float> { 1000.0f, 20000.0f }, 12000.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "modulationDepth", 1 }, "Depth", juce::NormalisableRange<float> { 0.0f, 100.0f }, 15.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "modulationRate", 1 }, "Rate", juce::NormalisableRange<float> { 0.05f, 10.0f }, 0.35f));
 
     return layout;
 }
@@ -161,6 +187,12 @@ void AuroraD80AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     delayBuffer.setSize (2, maxDelaySamples);
     delayBuffer.clear();
     delayWritePosition = 0;
+    lfoPhase = 0.0;
+
+    smoothedModulationDepth.reset (sampleRate, 0.05);
+    smoothedModulationRate.reset (sampleRate, 0.05);
+    smoothedModulationDepth.setCurrentAndTargetValue (15.0f);
+    smoothedModulationRate.setCurrentAndTargetValue (0.35f);
 
     const auto lowCutCoefficients = juce::IIRCoefficients::makeHighPass (currentSampleRate, 120.0);
     const auto highCutCoefficients = juce::IIRCoefficients::makeLowPass (currentSampleRate, 12000.0);
@@ -223,6 +255,8 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     const auto syncDivision = static_cast<int> (std::round (parameters.getRawParameterValue ("syncDivision")->load()));
     const auto lowCutHz = parameters.getRawParameterValue ("lowCutHz")->load();
     const auto highCutHz = parameters.getRawParameterValue ("highCutHz")->load();
+    const auto modulationDepth = parameters.getRawParameterValue ("modulationDepth")->load();
+    const auto modulationRate = parameters.getRawParameterValue ("modulationRate")->load();
 
     if (syncEnabled)
     {
@@ -249,19 +283,35 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
         highCutFilters[channel].setCoefficients (highCutCoefficients);
     }
 
+    smoothedModulationDepth.setTargetValue (modulationDepth);
+    smoothedModulationRate.setTargetValue (modulationRate);
+
     const auto delayBufferSize = delayBuffer.getNumSamples();
-    const auto delaySamples = juce::jlimit (1, delayBufferSize - 1,
-                                           static_cast<int> (std::round (delayTimeMs * currentSampleRate / 1000.0)));
+    const auto baseDelaySamples = juce::jlimit (1, delayBufferSize - 1,
+                                               static_cast<int> (std::round (delayTimeMs * currentSampleRate / 1000.0)));
+    const auto maxModulationSamples = maxModulationDepthMs * currentSampleRate / 1000.0;
     const auto channelsToProcess = juce::jmin (2, totalNumInputChannels, totalNumOutputChannels);
 
     for (auto sample = 0; sample < numSamples; ++sample)
     {
-        const auto readPosition = (delayWritePosition + delayBufferSize - delaySamples) % delayBufferSize;
+        const auto depthPercent = smoothedModulationDepth.getNextValue();
+        const auto rateHz = smoothedModulationRate.getNextValue();
+        const auto modulationIsActive = depthPercent > 0.0001f;
+        auto effectiveDelaySamples = static_cast<double> (baseDelaySamples);
+        auto readPosition = (delayWritePosition + delayBufferSize - baseDelaySamples) % delayBufferSize;
+
+        if (modulationIsActive)
+        {
+            const auto lfoValue = std::sin (lfoPhase);
+            const auto modulationSamples = (static_cast<double> (depthPercent) / 100.0) * maxModulationSamples * lfoValue;
+            effectiveDelaySamples = juce::jlimit (1.0, static_cast<double> (delayBufferSize - 2), effectiveDelaySamples + modulationSamples);
+        }
 
         for (auto channel = 0; channel < channelsToProcess; ++channel)
         {
             const auto input = buffer.getSample (channel, sample) * inputGain;
-            const auto delayed = delayBuffer.getSample (channel, readPosition);
+            const auto delayed = modulationIsActive ? readDelaySampleLinear (delayBuffer, channel, delayWritePosition, effectiveDelaySamples)
+                                                    : delayBuffer.getSample (channel, readPosition);
             const auto filteredDelayed = highCutFilters[channel].processSingleSampleRaw (
                 lowCutFilters[channel].processSingleSampleRaw (delayed));
             const auto output = ((input * (1.0f - mix)) + (filteredDelayed * mix)) * outputGain;
@@ -269,6 +319,11 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             delayBuffer.setSample (channel, delayWritePosition, input + (filteredDelayed * feedback));
             buffer.setSample (channel, sample, output);
         }
+
+        lfoPhase += juce::MathConstants<double>::twoPi * static_cast<double> (rateHz) / currentSampleRate;
+
+        if (lfoPhase >= juce::MathConstants<double>::twoPi)
+            lfoPhase -= juce::MathConstants<double>::twoPi;
 
         delayWritePosition = (delayWritePosition + 1) % delayBufferSize;
     }

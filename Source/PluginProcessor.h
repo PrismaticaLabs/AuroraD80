@@ -66,8 +66,11 @@ private:
     juce::AudioBuffer<float> delayBuffer;
     std::array<juce::IIRFilter, 2> lowCutFilters;
     std::array<juce::IIRFilter, 2> highCutFilters;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedModulationDepth;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedModulationRate;
     int delayWritePosition = 0;
     double currentSampleRate = 44100.0;
+    double lfoPhase = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuroraD80AudioProcessor)
 };

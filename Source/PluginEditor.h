@@ -35,9 +35,11 @@ private:
     enum class ValueFormat
     {
         Percent,
+        ModPercent,
         Milliseconds,
         Hz,
-        KHz
+        KHz,
+        RateHz
     };
 
     void configureSlider (juce::Slider& slider,
@@ -56,6 +58,8 @@ private:
     juce::Slider timeSlider;
     juce::Slider lowCutSlider;
     juce::Slider highCutSlider;
+    juce::Slider depthSlider;
+    juce::Slider rateSlider;
     juce::Slider feedbackSlider;
     juce::Slider mixSlider;
     juce::Slider outputSlider;
@@ -64,6 +68,8 @@ private:
     juce::Label timeLabel;
     juce::Label lowCutLabel;
     juce::Label highCutLabel;
+    juce::Label depthLabel;
+    juce::Label rateLabel;
     juce::Label feedbackLabel;
     juce::Label mixLabel;
     juce::Label outputLabel;
@@ -72,6 +78,8 @@ private:
     juce::Label timeValueLabel;
     juce::Label lowCutValueLabel;
     juce::Label highCutValueLabel;
+    juce::Label depthValueLabel;
+    juce::Label rateValueLabel;
     juce::Label feedbackValueLabel;
     juce::Label mixValueLabel;
     juce::Label outputValueLabel;
@@ -83,6 +91,8 @@ private:
     std::unique_ptr<SliderAttachment> timeAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
     std::unique_ptr<SliderAttachment> highCutAttachment;
+    std::unique_ptr<SliderAttachment> depthAttachment;
+    std::unique_ptr<SliderAttachment> rateAttachment;
     std::unique_ptr<SliderAttachment> feedbackAttachment;
     std::unique_ptr<SliderAttachment> mixAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;
