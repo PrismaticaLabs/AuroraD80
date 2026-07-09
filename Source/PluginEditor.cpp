@@ -417,10 +417,12 @@ void AuroraD80AudioProcessorEditor::updateTimeValueLabel()
             divisionText = "1/4";
 
         timeValueLabel.setText (divisionText, juce::dontSendNotification);
+        repaint();
         return;
     }
 
     updateValueLabel (timeSlider, timeValueLabel, ValueFormat::Milliseconds);
+    repaint();
 }
 
 void AuroraD80AudioProcessorEditor::timerCallback()
@@ -454,15 +456,43 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     g.drawHorizontalLine (layout.header.getBottom(), 0.0f, static_cast<float> (getWidth()));
 
     const auto display = layout.display.toFloat();
-    g.setColour (juce::Colour (0xff0c0f0f));
+    const auto syncIsEnabled = syncButton.getToggleState();
+    auto displayValue = syncIsEnabled ? divisionBox.getText()
+                                      : juce::String (juce::roundToInt (timeSlider.getValue())) + " ms";
+
+    if (displayValue.isEmpty())
+        displayValue = "1/4";
+
+    const auto displayMode = syncIsEnabled ? juce::String ("SYNC") : juce::String ("MANUAL");
+
+    g.setColour (juce::Colour (0xff050505));
     g.fillRoundedRectangle (display, 5.0f);
+
+    g.setColour (juce::Colour (0x24ff4a18));
+    g.fillRoundedRectangle (display.reduced (3.0f), 3.0f);
+
+    g.setColour (juce::Colour (0xff070707));
+    g.fillRoundedRectangle (display.reduced (5.0f), 3.0f);
+
     g.setColour (juce::Colour (0xff403833));
     g.drawRoundedRectangle (display, 5.0f, 1.0f);
-    g.setColour (juce::Colour (0x18ff6a1a));
+    g.setColour (juce::Colour (0x35ff6a1a));
     g.drawRoundedRectangle (display.reduced (3.0f), 3.0f, 1.0f);
-    g.setColour (juce::Colour (0xff766d67));
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
-    g.drawText ("DISPLAY", layout.display, juce::Justification::centred);
+
+    auto displayTextArea = layout.display.reduced (12, 5);
+    auto modeArea = displayTextArea.removeFromTop (13);
+
+    g.setColour (juce::Colour (0xff8d8580));
+    g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
+    g.drawText (displayMode, modeArea, juce::Justification::centred);
+
+    g.setFont (juce::FontOptions (25.0f, juce::Font::bold));
+    g.setColour (juce::Colour (0x44ff3a12));
+    g.drawText (displayValue, displayTextArea.translated (0, 1), juce::Justification::centred);
+    g.setColour (juce::Colour (0x66ff6a1a));
+    g.drawText (displayValue, displayTextArea, juce::Justification::centred);
+    g.setColour (juce::Colour (0xffff7a22));
+    g.drawText (displayValue, displayTextArea, juce::Justification::centred);
 
     drawPanel (g, layout.input, "INPUT");
     drawPanel (g, layout.delay, "DELAY");
