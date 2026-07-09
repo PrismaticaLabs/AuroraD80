@@ -29,7 +29,12 @@ public:
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 
-    void configureSlider (juce::Slider& slider, juce::Label& label, const juce::String& labelText);
+    void configureSlider (juce::Slider& slider,
+                          juce::Label& nameLabel,
+                          juce::Label& valueLabel,
+                          const juce::String& labelText,
+                          bool usesMilliseconds);
+    void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, bool usesMilliseconds);
 
     AuroraD80AudioProcessor& audioProcessor;
 
@@ -44,6 +49,12 @@ private:
     juce::Label feedbackLabel;
     juce::Label mixLabel;
     juce::Label outputLabel;
+
+    juce::Label inputValueLabel;
+    juce::Label timeValueLabel;
+    juce::Label feedbackValueLabel;
+    juce::Label mixValueLabel;
+    juce::Label outputValueLabel;
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> timeAttachment;
