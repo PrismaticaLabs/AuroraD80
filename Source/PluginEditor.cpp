@@ -15,11 +15,13 @@
 AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    configureSlider (inputSlider, inputLabel, inputValueLabel, "INPUT", false);
-    configureSlider (timeSlider, timeLabel, timeValueLabel, "TIME", true);
-    configureSlider (feedbackSlider, feedbackLabel, feedbackValueLabel, "FEEDBACK", false);
-    configureSlider (mixSlider, mixLabel, mixValueLabel, "MIX", false);
-    configureSlider (outputSlider, outputLabel, outputValueLabel, "OUTPUT", false);
+    configureSlider (inputSlider, inputLabel, inputValueLabel, "INPUT", ValueFormat::Percent);
+    configureSlider (timeSlider, timeLabel, timeValueLabel, "TIME", ValueFormat::Milliseconds);
+    configureSlider (lowCutSlider, lowCutLabel, lowCutValueLabel, "LOW CUT", ValueFormat::Hz);
+    configureSlider (highCutSlider, highCutLabel, highCutValueLabel, "HIGH CUT", ValueFormat::KHz);
+    configureSlider (feedbackSlider, feedbackLabel, feedbackValueLabel, "FEEDBACK", ValueFormat::Percent);
+    configureSlider (mixSlider, mixLabel, mixValueLabel, "MIX", ValueFormat::Percent);
+    configureSlider (outputSlider, outputLabel, outputValueLabel, "OUTPUT", ValueFormat::Percent);
     configureSyncControls();
 
     timeSlider.onValueChange = [this]
@@ -29,17 +31,21 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
 
     inputAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "inputGain", inputSlider);
     timeAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "delayTimeMs", timeSlider);
+    lowCutAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "lowCutHz", lowCutSlider);
+    highCutAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "highCutHz", highCutSlider);
     feedbackAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "feedback", feedbackSlider);
     mixAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "mix", mixSlider);
     outputAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "outputGain", outputSlider);
     syncAttachment = std::make_unique<ButtonAttachment> (audioProcessor.parameters, "syncEnabled", syncButton);
     divisionAttachment = std::make_unique<ComboBoxAttachment> (audioProcessor.parameters, "syncDivision", divisionBox);
 
-    updateValueLabel (inputSlider, inputValueLabel, false);
+    updateValueLabel (inputSlider, inputValueLabel, ValueFormat::Percent);
     updateTimeValueLabel();
-    updateValueLabel (feedbackSlider, feedbackValueLabel, false);
-    updateValueLabel (mixSlider, mixValueLabel, false);
-    updateValueLabel (outputSlider, outputValueLabel, false);
+    updateValueLabel (lowCutSlider, lowCutValueLabel, ValueFormat::Hz);
+    updateValueLabel (highCutSlider, highCutValueLabel, ValueFormat::KHz);
+    updateValueLabel (feedbackSlider, feedbackValueLabel, ValueFormat::Percent);
+    updateValueLabel (mixSlider, mixValueLabel, ValueFormat::Percent);
+    updateValueLabel (outputSlider, outputValueLabel, ValueFormat::Percent);
 
     startTimerHz (15);
     setSize (800, 420);
@@ -53,28 +59,28 @@ void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
                                                      juce::Label& nameLabel,
                                                      juce::Label& valueLabel,
                                                      const juce::String& labelText,
-                                                     bool usesMilliseconds)
+                                                     ValueFormat valueFormat)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (0xffff6a1a));
     slider.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff3a2520));
     slider.setColour (juce::Slider::thumbColourId, juce::Colour (0xffffb36f));
-    slider.onValueChange = [this, &slider, &valueLabel, usesMilliseconds]
+    slider.onValueChange = [this, &slider, &valueLabel, valueFormat]
     {
-        updateValueLabel (slider, valueLabel, usesMilliseconds);
+        updateValueLabel (slider, valueLabel, valueFormat);
     };
     addAndMakeVisible (slider);
 
     nameLabel.setText (labelText, juce::dontSendNotification);
     nameLabel.setJustificationType (juce::Justification::centred);
     nameLabel.setColour (juce::Label::textColourId, juce::Colour (0xffff8a3d));
-    nameLabel.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    nameLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     addAndMakeVisible (nameLabel);
 
     valueLabel.setJustificationType (juce::Justification::centred);
     valueLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffdcc6));
-    valueLabel.setFont (juce::FontOptions (15.0f));
+    valueLabel.setFont (juce::FontOptions (14.0f));
     addAndMakeVisible (valueLabel);
 }
 
@@ -106,15 +112,26 @@ void AuroraD80AudioProcessorEditor::configureSyncControls()
 
 void AuroraD80AudioProcessorEditor::updateValueLabel (juce::Slider& slider,
                                                       juce::Label& valueLabel,
-                                                      bool usesMilliseconds)
+                                                      ValueFormat valueFormat)
 {
-    if (usesMilliseconds)
+    switch (valueFormat)
     {
-        valueLabel.setText (juce::String (juce::roundToInt (slider.getValue())) + " ms", juce::dontSendNotification);
-        return;
-    }
+        case ValueFormat::Percent:
+            valueLabel.setText (juce::String (juce::roundToInt (slider.getValue() * 100.0)) + "%", juce::dontSendNotification);
+            break;
 
-    valueLabel.setText (juce::String (juce::roundToInt (slider.getValue() * 100.0)) + "%", juce::dontSendNotification);
+        case ValueFormat::Milliseconds:
+            valueLabel.setText (juce::String (juce::roundToInt (slider.getValue())) + " ms", juce::dontSendNotification);
+            break;
+
+        case ValueFormat::Hz:
+            valueLabel.setText (juce::String (juce::roundToInt (slider.getValue())) + " Hz", juce::dontSendNotification);
+            break;
+
+        case ValueFormat::KHz:
+            valueLabel.setText (juce::String (slider.getValue() / 1000.0, 1) + " kHz", juce::dontSendNotification);
+            break;
+    }
 }
 
 void AuroraD80AudioProcessorEditor::updateTimeValueLabel()
@@ -133,7 +150,7 @@ void AuroraD80AudioProcessorEditor::updateTimeValueLabel()
         return;
     }
 
-    updateValueLabel (timeSlider, timeValueLabel, true);
+    updateValueLabel (timeSlider, timeValueLabel, ValueFormat::Milliseconds);
 }
 
 void AuroraD80AudioProcessorEditor::timerCallback()
@@ -166,21 +183,21 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
 
 void AuroraD80AudioProcessorEditor::resized()
 {
-    auto controlsArea = getLocalBounds().withTrimmedTop (136).withTrimmedBottom (38).reduced (62, 0);
-    const auto controlWidth = controlsArea.getWidth() / 5;
+    auto controlsArea = getLocalBounds().withTrimmedTop (136).withTrimmedBottom (38).reduced (44, 0);
+    const auto controlWidth = controlsArea.getWidth() / 7;
 
-    juce::Slider* sliders[] = { &inputSlider, &timeSlider, &feedbackSlider, &mixSlider, &outputSlider };
-    juce::Label* nameLabels[] = { &inputLabel, &timeLabel, &feedbackLabel, &mixLabel, &outputLabel };
-    juce::Label* valueLabels[] = { &inputValueLabel, &timeValueLabel, &feedbackValueLabel, &mixValueLabel, &outputValueLabel };
+    juce::Slider* sliders[] = { &inputSlider, &timeSlider, &lowCutSlider, &highCutSlider, &feedbackSlider, &mixSlider, &outputSlider };
+    juce::Label* nameLabels[] = { &inputLabel, &timeLabel, &lowCutLabel, &highCutLabel, &feedbackLabel, &mixLabel, &outputLabel };
+    juce::Label* valueLabels[] = { &inputValueLabel, &timeValueLabel, &lowCutValueLabel, &highCutValueLabel, &feedbackValueLabel, &mixValueLabel, &outputValueLabel };
 
-    for (auto index = 0; index < 5; ++index)
+    for (auto index = 0; index < 7; ++index)
     {
-        auto controlBounds = controlsArea.removeFromLeft (controlWidth).reduced (18, 0);
-        auto centredBounds = controlBounds.withSizeKeepingCentre (118, controlBounds.getHeight());
+        auto controlBounds = controlsArea.removeFromLeft (controlWidth).reduced (8, 0);
+        auto centredBounds = controlBounds.withSizeKeepingCentre (92, controlBounds.getHeight());
 
         nameLabels[index]->setBounds (centredBounds.removeFromTop (24));
         centredBounds.removeFromTop (6);
-        sliders[index]->setBounds (centredBounds.removeFromTop (128));
+        sliders[index]->setBounds (centredBounds.removeFromTop (118));
         centredBounds.removeFromTop (4);
         valueLabels[index]->setBounds (centredBounds.removeFromTop (24));
 

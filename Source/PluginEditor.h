@@ -32,13 +32,21 @@ private:
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
+    enum class ValueFormat
+    {
+        Percent,
+        Milliseconds,
+        Hz,
+        KHz
+    };
+
     void configureSlider (juce::Slider& slider,
                           juce::Label& nameLabel,
                           juce::Label& valueLabel,
                           const juce::String& labelText,
-                          bool usesMilliseconds);
+                          ValueFormat valueFormat);
     void configureSyncControls();
-    void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, bool usesMilliseconds);
+    void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, ValueFormat valueFormat);
     void updateTimeValueLabel();
     void timerCallback() override;
 
@@ -46,18 +54,24 @@ private:
 
     juce::Slider inputSlider;
     juce::Slider timeSlider;
+    juce::Slider lowCutSlider;
+    juce::Slider highCutSlider;
     juce::Slider feedbackSlider;
     juce::Slider mixSlider;
     juce::Slider outputSlider;
 
     juce::Label inputLabel;
     juce::Label timeLabel;
+    juce::Label lowCutLabel;
+    juce::Label highCutLabel;
     juce::Label feedbackLabel;
     juce::Label mixLabel;
     juce::Label outputLabel;
 
     juce::Label inputValueLabel;
     juce::Label timeValueLabel;
+    juce::Label lowCutValueLabel;
+    juce::Label highCutValueLabel;
     juce::Label feedbackValueLabel;
     juce::Label mixValueLabel;
     juce::Label outputValueLabel;
@@ -67,6 +81,8 @@ private:
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> timeAttachment;
+    std::unique_ptr<SliderAttachment> lowCutAttachment;
+    std::unique_ptr<SliderAttachment> highCutAttachment;
     std::unique_ptr<SliderAttachment> feedbackAttachment;
     std::unique_ptr<SliderAttachment> mixAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;

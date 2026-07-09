@@ -58,6 +58,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout AuroraD80AudioProcessor::cre
         juce::ParameterID { "syncDivision", 1 }, "Division",
         juce::StringArray { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar" }, 4));
 
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "lowCutHz", 1 }, "Low Cut", juce::NormalisableRange<float> { 20.0f, 2000.0f }, 120.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "highCutHz", 1 }, "High Cut", juce::NormalisableRange<float> { 1000.0f, 20000.0f }, 12000.0f));
+
     return layout;
 }
 
@@ -155,6 +161,17 @@ void AuroraD80AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     delayBuffer.setSize (2, maxDelaySamples);
     delayBuffer.clear();
     delayWritePosition = 0;
+
+    const auto lowCutCoefficients = juce::IIRCoefficients::makeHighPass (currentSampleRate, 120.0);
+    const auto highCutCoefficients = juce::IIRCoefficients::makeLowPass (currentSampleRate, 12000.0);
+
+    for (auto channel = 0; channel < 2; ++channel)
+    {
+        lowCutFilters[channel].reset();
+        highCutFilters[channel].reset();
+        lowCutFilters[channel].setCoefficients (lowCutCoefficients);
+        highCutFilters[channel].setCoefficients (highCutCoefficients);
+    }
 }
 
 void AuroraD80AudioProcessor::releaseResources()
@@ -204,6 +221,8 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     const auto outputGain = parameters.getRawParameterValue ("outputGain")->load();
     const auto syncEnabled = parameters.getRawParameterValue ("syncEnabled")->load() > 0.5f;
     const auto syncDivision = static_cast<int> (std::round (parameters.getRawParameterValue ("syncDivision")->load()));
+    const auto lowCutHz = parameters.getRawParameterValue ("lowCutHz")->load();
+    const auto highCutHz = parameters.getRawParameterValue ("highCutHz")->load();
 
     if (syncEnabled)
     {
@@ -216,6 +235,18 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
         const auto quarterNoteMs = 60000.0 / bpm;
         delayTimeMs = static_cast<float> (juce::jlimit (1.0, maxDelayTimeMs, quarterNoteMs * getDivisionMultiplier (syncDivision)));
+    }
+
+    const auto nyquist = currentSampleRate * 0.5;
+    const auto safeLowCutHz = juce::jlimit (20.0, juce::jmax (20.0, nyquist - 1.0), static_cast<double> (lowCutHz));
+    const auto safeHighCutHz = juce::jlimit (1000.0, juce::jmax (1000.0, nyquist - 1.0), static_cast<double> (highCutHz));
+    const auto lowCutCoefficients = juce::IIRCoefficients::makeHighPass (currentSampleRate, safeLowCutHz);
+    const auto highCutCoefficients = juce::IIRCoefficients::makeLowPass (currentSampleRate, safeHighCutHz);
+
+    for (auto channel = 0; channel < 2; ++channel)
+    {
+        lowCutFilters[channel].setCoefficients (lowCutCoefficients);
+        highCutFilters[channel].setCoefficients (highCutCoefficients);
     }
 
     const auto delayBufferSize = delayBuffer.getNumSamples();
@@ -231,9 +262,11 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
         {
             const auto input = buffer.getSample (channel, sample) * inputGain;
             const auto delayed = delayBuffer.getSample (channel, readPosition);
-            const auto output = ((input * (1.0f - mix)) + (delayed * mix)) * outputGain;
+            const auto filteredDelayed = highCutFilters[channel].processSingleSampleRaw (
+                lowCutFilters[channel].processSingleSampleRaw (delayed));
+            const auto output = ((input * (1.0f - mix)) + (filteredDelayed * mix)) * outputGain;
 
-            delayBuffer.setSample (channel, delayWritePosition, input + (delayed * feedback));
+            delayBuffer.setSample (channel, delayWritePosition, input + (filteredDelayed * feedback));
             buffer.setSample (channel, sample, output);
         }
 

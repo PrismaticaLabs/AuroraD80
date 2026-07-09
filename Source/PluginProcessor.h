@@ -64,6 +64,8 @@ private:
     static APVTS::ParameterLayout createParameterLayout();
 
     juce::AudioBuffer<float> delayBuffer;
+    std::array<juce::IIRFilter, 2> lowCutFilters;
+    std::array<juce::IIRFilter, 2> highCutFilters;
     int delayWritePosition = 0;
     double currentSampleRate = 44100.0;
 
