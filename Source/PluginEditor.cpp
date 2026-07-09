@@ -113,6 +113,138 @@ namespace
     }
 }
 
+AuroraD80AudioProcessorEditor::AuroraLookAndFeel::AuroraLookAndFeel()
+{
+    setColour (juce::PopupMenu::backgroundColourId, juce::Colour (0xff151312));
+    setColour (juce::PopupMenu::textColourId, juce::Colour (valueWhite));
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, juce::Colour (0xff3a2118));
+    setColour (juce::PopupMenu::highlightedTextColourId, juce::Colour (0xffffdcc6));
+}
+
+void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawRotarySlider (juce::Graphics& g,
+                                                                         int x,
+                                                                         int y,
+                                                                         int width,
+                                                                         int height,
+                                                                         float sliderPosProportional,
+                                                                         float rotaryStartAngle,
+                                                                         float rotaryEndAngle,
+                                                                         juce::Slider& slider)
+{
+    juce::ignoreUnused (slider);
+
+    const auto bounds = juce::Rectangle<float> (static_cast<float> (x),
+                                                static_cast<float> (y),
+                                                static_cast<float> (width),
+                                                static_cast<float> (height)).reduced (4.0f);
+    const auto diameter = juce::jmin (bounds.getWidth(), bounds.getHeight());
+    const auto knob = bounds.withSizeKeepingCentre (diameter, diameter).reduced (3.0f);
+    const auto radius = knob.getWidth() * 0.5f;
+    const auto centre = knob.getCentre();
+    const auto angle = rotaryStartAngle + (sliderPosProportional * (rotaryEndAngle - rotaryStartAngle));
+
+    g.setColour (juce::Colour (0xff080707).withAlpha (0.65f));
+    g.fillEllipse (knob.translated (0.0f, 2.0f));
+
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff34302d), centre.x, knob.getY(),
+                                             juce::Colour (0xff11100f), centre.x, knob.getBottom(), false));
+    g.fillEllipse (knob);
+
+    g.setColour (juce::Colour (0xff4a433e));
+    g.drawEllipse (knob, 1.2f);
+
+    g.setColour (juce::Colour (0xff171514));
+    g.fillEllipse (knob.reduced (7.0f));
+
+    g.setColour (juce::Colour (0xff2b2724));
+    g.drawEllipse (knob.reduced (7.0f), 1.0f);
+
+    const auto arcBounds = knob.reduced (2.5f);
+    juce::Path backgroundArc;
+    backgroundArc.addCentredArc (centre.x, centre.y, radius - 2.5f, radius - 2.5f,
+                                 0.0f, rotaryStartAngle, rotaryEndAngle, true);
+    g.setColour (juce::Colour (0xff3a302b));
+    g.strokePath (backgroundArc, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    juce::Path valueArc;
+    valueArc.addCentredArc (centre.x, centre.y, radius - 2.5f, radius - 2.5f,
+                            0.0f, rotaryStartAngle, angle, true);
+    g.setColour (juce::Colour (orange));
+    g.strokePath (valueArc, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    const auto indicatorRadius = radius - 13.0f;
+    const auto indicator = centre.getPointOnCircumference (indicatorRadius, angle);
+    g.setColour (juce::Colour (0xffffb36f));
+    g.fillEllipse (indicator.x - 2.2f, indicator.y - 2.2f, 4.4f, 4.4f);
+
+    g.setColour (juce::Colour (0x28ffffff));
+    g.drawEllipse (arcBounds.reduced (7.5f), 0.6f);
+}
+
+void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawComboBox (juce::Graphics& g,
+                                                                     int width,
+                                                                     int height,
+                                                                     bool isButtonDown,
+                                                                     int buttonX,
+                                                                     int buttonY,
+                                                                     int buttonW,
+                                                                     int buttonH,
+                                                                     juce::ComboBox& box)
+{
+    juce::ignoreUnused (buttonX, buttonY, buttonW, buttonH, box);
+
+    auto bounds = juce::Rectangle<float> (0.5f, 0.5f, static_cast<float> (width) - 1.0f, static_cast<float> (height) - 1.0f);
+    g.setColour (juce::Colour (isButtonDown ? 0xff211a17 : 0xff151312));
+    g.fillRoundedRectangle (bounds, 4.0f);
+
+    g.setColour (juce::Colour (0xff4a3f39));
+    g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+
+    juce::Path arrow;
+    const auto arrowCentreX = static_cast<float> (width - 11);
+    const auto arrowCentreY = static_cast<float> (height) * 0.5f + 1.0f;
+    arrow.addTriangle (arrowCentreX - 4.0f, arrowCentreY - 2.0f,
+                       arrowCentreX + 4.0f, arrowCentreY - 2.0f,
+                       arrowCentreX, arrowCentreY + 3.0f);
+    g.setColour (juce::Colour (softOrange));
+    g.fillPath (arrow);
+}
+
+juce::Font AuroraD80AudioProcessorEditor::AuroraLookAndFeel::getComboBoxFont (juce::ComboBox& box)
+{
+    juce::ignoreUnused (box);
+    return juce::FontOptions (12.0f, juce::Font::bold);
+}
+
+void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawToggleButton (juce::Graphics& g,
+                                                                         juce::ToggleButton& button,
+                                                                         bool shouldDrawButtonAsHighlighted,
+                                                                         bool shouldDrawButtonAsDown)
+{
+    const auto bounds = button.getLocalBounds().toFloat();
+    const auto boxSize = juce::jmin (14.0f, bounds.getHeight() - 4.0f);
+    const auto box = juce::Rectangle<float> (1.0f, (bounds.getHeight() - boxSize) * 0.5f, boxSize, boxSize);
+
+    g.setColour (juce::Colour (shouldDrawButtonAsDown ? 0xff2a211d : 0xff141211));
+    g.fillRoundedRectangle (box, 3.0f);
+
+    g.setColour (juce::Colour (shouldDrawButtonAsHighlighted ? softOrange : panelBorder));
+    g.drawRoundedRectangle (box, 3.0f, 1.0f);
+
+    if (button.getToggleState())
+    {
+        g.setColour (juce::Colour (orange));
+        g.fillRoundedRectangle (box.reduced (3.0f), 2.0f);
+    }
+
+    g.setColour (juce::Colour (lightGrey));
+    g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+    g.drawText (button.getButtonText(),
+                button.getLocalBounds().withTrimmedLeft (static_cast<int> (boxSize + 6.0f)),
+                juce::Justification::centredLeft,
+                false);
+}
+
 //==============================================================================
 AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
@@ -167,6 +299,19 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
 
 AuroraD80AudioProcessorEditor::~AuroraD80AudioProcessorEditor()
 {
+    inputSlider.setLookAndFeel (nullptr);
+    timeSlider.setLookAndFeel (nullptr);
+    lowCutSlider.setLookAndFeel (nullptr);
+    highCutSlider.setLookAndFeel (nullptr);
+    depthSlider.setLookAndFeel (nullptr);
+    rateSlider.setLookAndFeel (nullptr);
+    driveSlider.setLookAndFeel (nullptr);
+    vintageSlider.setLookAndFeel (nullptr);
+    feedbackSlider.setLookAndFeel (nullptr);
+    mixSlider.setLookAndFeel (nullptr);
+    outputSlider.setLookAndFeel (nullptr);
+    syncButton.setLookAndFeel (nullptr);
+    divisionBox.setLookAndFeel (nullptr);
 }
 
 void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
@@ -177,6 +322,7 @@ void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+    slider.setLookAndFeel (&lookAndFeel);
     slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (orange));
     slider.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff403733));
     slider.setColour (juce::Slider::thumbColourId, juce::Colour (0xffffb36f));
@@ -201,6 +347,7 @@ void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
 void AuroraD80AudioProcessorEditor::configureSyncControls()
 {
     syncButton.setButtonText ("SYNC");
+    syncButton.setLookAndFeel (&lookAndFeel);
     syncButton.setColour (juce::ToggleButton::textColourId, juce::Colour (lightGrey));
     syncButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (orange));
     syncButton.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour (0xff5d3728));
@@ -211,6 +358,7 @@ void AuroraD80AudioProcessorEditor::configureSyncControls()
     addAndMakeVisible (syncButton);
 
     divisionBox.addItemList (juce::StringArray { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar" }, 1);
+    divisionBox.setLookAndFeel (&lookAndFeel);
     divisionBox.setSelectedId (5, juce::dontSendNotification);
     divisionBox.setJustificationType (juce::Justification::centred);
     divisionBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff171514));

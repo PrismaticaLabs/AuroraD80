@@ -32,6 +32,39 @@ private:
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
+    class AuroraLookAndFeel final : public juce::LookAndFeel_V4
+    {
+    public:
+        AuroraLookAndFeel();
+
+        void drawRotarySlider (juce::Graphics& g,
+                               int x,
+                               int y,
+                               int width,
+                               int height,
+                               float sliderPosProportional,
+                               float rotaryStartAngle,
+                               float rotaryEndAngle,
+                               juce::Slider& slider) override;
+
+        void drawComboBox (juce::Graphics& g,
+                           int width,
+                           int height,
+                           bool isButtonDown,
+                           int buttonX,
+                           int buttonY,
+                           int buttonW,
+                           int buttonH,
+                           juce::ComboBox& box) override;
+
+        juce::Font getComboBoxFont (juce::ComboBox& box) override;
+
+        void drawToggleButton (juce::Graphics& g,
+                               juce::ToggleButton& button,
+                               bool shouldDrawButtonAsHighlighted,
+                               bool shouldDrawButtonAsDown) override;
+    };
+
     enum class ValueFormat
     {
         Percent,
@@ -52,6 +85,7 @@ private:
     void updateTimeValueLabel();
     void timerCallback() override;
 
+    AuroraLookAndFeel lookAndFeel;
     AuroraD80AudioProcessor& audioProcessor;
 
     juce::Slider inputSlider;
