@@ -11,6 +11,26 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+namespace
+{
+    constexpr double maxDelayTimeMs = 2000.0;
+
+    double getDivisionMultiplier (int divisionIndex)
+    {
+        switch (divisionIndex)
+        {
+            case 0:  return 1.0 / 16.0; // 1/64
+            case 1:  return 1.0 / 8.0;  // 1/32
+            case 2:  return 1.0 / 4.0;  // 1/16
+            case 3:  return 1.0 / 2.0;  // 1/8
+            case 4:  return 1.0;        // 1/4
+            case 5:  return 2.0;        // 1/2
+            case 6:  return 4.0;        // 1 Bar
+            default: return 1.0;
+        }
+    }
+}
+
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout AuroraD80AudioProcessor::createParameterLayout()
 {
@@ -30,6 +50,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout AuroraD80AudioProcessor::cre
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "outputGain", 1 }, "Output", juce::NormalisableRange<float> { 0.0f, 2.0f }, 1.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "syncEnabled", 1 }, "Sync", false));
+
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "syncDivision", 1 }, "Division",
+        juce::StringArray { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar" }, 4));
 
     return layout;
 }
@@ -171,10 +198,25 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
         return;
 
     const auto inputGain = parameters.getRawParameterValue ("inputGain")->load();
-    const auto delayTimeMs = parameters.getRawParameterValue ("delayTimeMs")->load();
+    auto delayTimeMs = parameters.getRawParameterValue ("delayTimeMs")->load();
     const auto feedback = parameters.getRawParameterValue ("feedback")->load();
     const auto mix = parameters.getRawParameterValue ("mix")->load();
     const auto outputGain = parameters.getRawParameterValue ("outputGain")->load();
+    const auto syncEnabled = parameters.getRawParameterValue ("syncEnabled")->load() > 0.5f;
+    const auto syncDivision = static_cast<int> (std::round (parameters.getRawParameterValue ("syncDivision")->load()));
+
+    if (syncEnabled)
+    {
+        auto bpm = 120.0;
+
+        if (auto* playHead = getPlayHead())
+            if (auto position = playHead->getPosition())
+                if (auto hostBpm = position->getBpm(); hostBpm.hasValue() && *hostBpm > 0.0)
+                    bpm = *hostBpm;
+
+        const auto quarterNoteMs = 60000.0 / bpm;
+        delayTimeMs = static_cast<float> (juce::jlimit (1.0, maxDelayTimeMs, quarterNoteMs * getDivisionMultiplier (syncDivision)));
+    }
 
     const auto delayBufferSize = delayBuffer.getNumSamples();
     const auto delaySamples = juce::jlimit (1, delayBufferSize - 1,

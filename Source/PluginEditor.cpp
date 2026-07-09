@@ -20,19 +20,28 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     configureSlider (feedbackSlider, feedbackLabel, feedbackValueLabel, "FEEDBACK", false);
     configureSlider (mixSlider, mixLabel, mixValueLabel, "MIX", false);
     configureSlider (outputSlider, outputLabel, outputValueLabel, "OUTPUT", false);
+    configureSyncControls();
+
+    timeSlider.onValueChange = [this]
+    {
+        updateTimeValueLabel();
+    };
 
     inputAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "inputGain", inputSlider);
     timeAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "delayTimeMs", timeSlider);
     feedbackAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "feedback", feedbackSlider);
     mixAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "mix", mixSlider);
     outputAttachment = std::make_unique<SliderAttachment> (audioProcessor.parameters, "outputGain", outputSlider);
+    syncAttachment = std::make_unique<ButtonAttachment> (audioProcessor.parameters, "syncEnabled", syncButton);
+    divisionAttachment = std::make_unique<ComboBoxAttachment> (audioProcessor.parameters, "syncDivision", divisionBox);
 
     updateValueLabel (inputSlider, inputValueLabel, false);
-    updateValueLabel (timeSlider, timeValueLabel, true);
+    updateTimeValueLabel();
     updateValueLabel (feedbackSlider, feedbackValueLabel, false);
     updateValueLabel (mixSlider, mixValueLabel, false);
     updateValueLabel (outputSlider, outputValueLabel, false);
 
+    startTimerHz (15);
     setSize (800, 420);
 }
 
@@ -69,6 +78,32 @@ void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
     addAndMakeVisible (valueLabel);
 }
 
+void AuroraD80AudioProcessorEditor::configureSyncControls()
+{
+    syncButton.setButtonText ("SYNC");
+    syncButton.setColour (juce::ToggleButton::textColourId, juce::Colour (0xffffdcc6));
+    syncButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffff6a1a));
+    syncButton.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour (0xff5d3728));
+    syncButton.onClick = [this]
+    {
+        updateTimeValueLabel();
+    };
+    addAndMakeVisible (syncButton);
+
+    divisionBox.addItemList (juce::StringArray { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar" }, 1);
+    divisionBox.setSelectedId (5, juce::dontSendNotification);
+    divisionBox.setJustificationType (juce::Justification::centred);
+    divisionBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff17110f));
+    divisionBox.setColour (juce::ComboBox::textColourId, juce::Colour (0xffffdcc6));
+    divisionBox.setColour (juce::ComboBox::outlineColourId, juce::Colour (0xff3f241b));
+    divisionBox.setColour (juce::ComboBox::arrowColourId, juce::Colour (0xffff8a3d));
+    divisionBox.onChange = [this]
+    {
+        updateTimeValueLabel();
+    };
+    addAndMakeVisible (divisionBox);
+}
+
 void AuroraD80AudioProcessorEditor::updateValueLabel (juce::Slider& slider,
                                                       juce::Label& valueLabel,
                                                       bool usesMilliseconds)
@@ -80,6 +115,30 @@ void AuroraD80AudioProcessorEditor::updateValueLabel (juce::Slider& slider,
     }
 
     valueLabel.setText (juce::String (juce::roundToInt (slider.getValue() * 100.0)) + "%", juce::dontSendNotification);
+}
+
+void AuroraD80AudioProcessorEditor::updateTimeValueLabel()
+{
+    const auto syncIsEnabled = syncButton.getToggleState();
+    divisionBox.setEnabled (syncIsEnabled);
+
+    if (syncIsEnabled)
+    {
+        auto divisionText = divisionBox.getText();
+
+        if (divisionText.isEmpty())
+            divisionText = "1/4";
+
+        timeValueLabel.setText (divisionText, juce::dontSendNotification);
+        return;
+    }
+
+    updateValueLabel (timeSlider, timeValueLabel, true);
+}
+
+void AuroraD80AudioProcessorEditor::timerCallback()
+{
+    updateTimeValueLabel();
 }
 
 //==============================================================================
@@ -117,12 +176,20 @@ void AuroraD80AudioProcessorEditor::resized()
     for (auto index = 0; index < 5; ++index)
     {
         auto controlBounds = controlsArea.removeFromLeft (controlWidth).reduced (18, 0);
-        auto centredBounds = controlBounds.withSizeKeepingCentre (112, controlBounds.getHeight());
+        auto centredBounds = controlBounds.withSizeKeepingCentre (118, controlBounds.getHeight());
 
         nameLabels[index]->setBounds (centredBounds.removeFromTop (24));
-        centredBounds.removeFromTop (8);
-        sliders[index]->setBounds (centredBounds.removeFromTop (142));
-        centredBounds.removeFromTop (8);
-        valueLabels[index]->setBounds (centredBounds.removeFromTop (28));
+        centredBounds.removeFromTop (6);
+        sliders[index]->setBounds (centredBounds.removeFromTop (128));
+        centredBounds.removeFromTop (4);
+        valueLabels[index]->setBounds (centredBounds.removeFromTop (24));
+
+        if (index == 1)
+        {
+            centredBounds.removeFromTop (8);
+            syncButton.setBounds (centredBounds.removeFromTop (22));
+            centredBounds.removeFromTop (6);
+            divisionBox.setBounds (centredBounds.removeFromTop (24));
+        }
     }
 }
