@@ -95,11 +95,11 @@ namespace
                                .reduced (5, 0);
         auto centredBounds = controlBounds.withSizeKeepingCentre (juce::jmin (maxWidth, controlBounds.getWidth()), controlBounds.getHeight());
 
-        nameLabel.setBounds (centredBounds.removeFromTop (16));
+        nameLabel.setBounds (centredBounds.removeFromTop (15));
         centredBounds.removeFromTop (1);
-        slider.setBounds (centredBounds.removeFromTop (62));
-        centredBounds.removeFromTop (1);
-        valueLabel.setBounds (centredBounds.removeFromTop (18));
+        slider.setBounds (centredBounds.removeFromTop (54));
+        centredBounds.removeFromTop (3);
+        valueLabel.setBounds (centredBounds.removeFromTop (24));
 
         return centredBounds;
     }
@@ -340,7 +340,7 @@ void AuroraD80AudioProcessorEditor::configureSlider (juce::Slider& slider,
 
     valueLabel.setJustificationType (juce::Justification::centred);
     valueLabel.setColour (juce::Label::textColourId, juce::Colour (valueWhite));
-    valueLabel.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    valueLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     addAndMakeVisible (valueLabel);
 }
 
