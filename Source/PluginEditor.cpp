@@ -13,12 +13,12 @@
 
 namespace
 {
-    constexpr auto backgroundTop = 0xff191716;
-    constexpr auto backgroundBottom = 0xff0d0c0c;
-    constexpr auto headerTop = 0xff242120;
-    constexpr auto headerBottom = 0xff151313;
-    constexpr auto panelFill = 0xff1f1d1c;
-    constexpr auto panelBorder = 0xff3a3330;
+    constexpr auto backgroundTop = 0xff171514;
+    constexpr auto backgroundBottom = 0xff090808;
+    constexpr auto headerTop = 0xff24211f;
+    constexpr auto headerBottom = 0xff100f0e;
+    constexpr auto panelFill = 0xff191716;
+    constexpr auto panelBorder = 0xff4a413a;
     constexpr auto panelHighlight = 0x22ffffff;
     constexpr auto orange = 0xffff6a1a;
     constexpr auto softOrange = 0xffff8a3d;
@@ -61,8 +61,27 @@ namespace
     {
         const auto panel = bounds.toFloat();
 
-        g.setColour (juce::Colour (panelFill));
+        g.setColour (juce::Colour (0xff030303).withAlpha (0.45f));
+        g.fillRoundedRectangle (panel.translated (0.0f, 2.0f), 7.0f);
+
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff26221f), panel.getCentreX(), panel.getY(),
+                                                 juce::Colour (panelFill), panel.getCentreX(), panel.getBottom(), false));
         g.fillRoundedRectangle (panel, 7.0f);
+
+        auto inset = panel.reduced (3.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0x55000000), inset.getCentreX(), inset.getY(),
+                                                 juce::Colour (0x05000000), inset.getCentreX(), inset.getY() + 24.0f, false));
+        g.fillRoundedRectangle (inset.withHeight (30.0f), 5.0f);
+
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0x00000000), inset.getCentreX(), inset.getBottom() - 34.0f,
+                                                 juce::Colour (0x65000000), inset.getCentreX(), inset.getBottom(), false));
+        g.fillRoundedRectangle (inset.withY (inset.getBottom() - 34.0f).withHeight (34.0f), 5.0f);
+
+        g.setColour (juce::Colour (0x33ffffff));
+        g.drawLine (panel.getX() + 8.0f, panel.getY() + 1.0f, panel.getRight() - 8.0f, panel.getY() + 1.0f, 1.0f);
+
+        g.setColour (juce::Colour (0x66000000));
+        g.drawLine (panel.getX() + 8.0f, panel.getBottom() - 1.0f, panel.getRight() - 8.0f, panel.getBottom() - 1.0f, 1.0f);
 
         g.setColour (juce::Colour (panelHighlight));
         g.drawRoundedRectangle (panel.reduced (1.0f), 7.0f, 1.0f);
@@ -74,7 +93,8 @@ namespace
         g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
         g.drawText (title, bounds.withHeight (22).reduced (10, 0), juce::Justification::centredLeft);
 
-        g.setColour (juce::Colour (0x25ff6a1a));
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0x00ff6a1a), static_cast<float> (bounds.getX() + 10), static_cast<float> (bounds.getY() + 24),
+                                                 juce::Colour (0x99ff6a1a), static_cast<float> (bounds.getCentreX()), static_cast<float> (bounds.getY() + 24), false));
         g.drawLine (static_cast<float> (bounds.getX() + 10),
                     static_cast<float> (bounds.getY() + 24),
                     static_cast<float> (bounds.getRight() - 10),
@@ -659,9 +679,25 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
                                              juce::Colour (backgroundBottom), 0.0f, static_cast<float> (getHeight()), false));
     g.fillRect (bounds);
 
+    for (auto y = 0; y < getHeight(); y += 3)
+    {
+        const auto alpha = (y % 9 == 0) ? 0x16 : 0x0a;
+        g.setColour (juce::Colour ((alpha << 24) | 0xffffff));
+        g.drawHorizontalLine (y, 0.0f, static_cast<float> (getWidth()));
+    }
+
+    g.setColour (juce::Colour (0x55000000));
+    g.drawRect (bounds.reduced (2), 2);
+
     g.setGradientFill (juce::ColourGradient (juce::Colour (headerTop), 0.0f, 0.0f,
                                              juce::Colour (headerBottom), 0.0f, static_cast<float> (layout.header.getBottom()), false));
     g.fillRect (layout.header);
+
+    for (auto y = layout.header.getY() + 2; y < layout.header.getBottom(); y += 4)
+    {
+        g.setColour (juce::Colour (0x10ffffff));
+        g.drawHorizontalLine (y, 8.0f, static_cast<float> (getWidth() - 8));
+    }
 
     auto titleArea = layout.header.withTrimmedBottom (18).toFloat();
     juce::Font titleFont (juce::FontOptions (24.0f, juce::Font::bold));
@@ -678,26 +714,30 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     juce::Path titlePath;
     titleGlyphs.createPath (titlePath);
 
-    g.setColour (juce::Colour (0xaa000000));
+    g.setColour (juce::Colour (0xbb000000));
     g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 2.0f));
 
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffffffff), titleArea.getCentreX(), titleArea.getY() + 4.0f,
-                                             juce::Colour (0xff77706a), titleArea.getCentreX(), titleArea.getBottom() - 2.0f,
-                                             false));
+    juce::ColourGradient titleGradient (juce::Colour (0xfff1eee7), titleArea.getCentreX(), titleArea.getY() + 3.0f,
+                                        juce::Colour (0xff6f6963), titleArea.getCentreX(), titleArea.getBottom() - 2.0f,
+                                        false);
+    titleGradient.addColour (0.34, juce::Colour (0xffb8b1a9));
+    titleGradient.addColour (0.52, juce::Colour (0xfff7f2e8));
+    titleGradient.addColour (0.76, juce::Colour (0xff8d867e));
+    g.setGradientFill (titleGradient);
     g.fillPath (titlePath);
 
-    g.setColour (juce::Colour (0x55ffffff));
-    g.strokePath (titlePath, juce::PathStrokeType (0.55f));
-
-    g.setColour (juce::Colour (0x33958d86));
-    g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 0.8f));
-
     g.setColour (juce::Colour (0x66ffffff));
-    g.drawLine (titleArea.getX() + 296.0f,
-                titleArea.getY() + 15.0f,
-                titleArea.getRight() - 296.0f,
-                titleArea.getY() + 15.0f,
-                0.7f);
+    g.strokePath (titlePath, juce::PathStrokeType (0.45f));
+
+    g.setColour (juce::Colour (0x44000000));
+    g.strokePath (titlePath, juce::PathStrokeType (1.0f), juce::AffineTransform::translation (0.0f, 1.0f));
+
+    g.setColour (juce::Colour (0x55ffffff));
+    g.drawLine (titleArea.getX() + 298.0f,
+                titleArea.getY() + 14.0f,
+                titleArea.getRight() - 298.0f,
+                titleArea.getY() + 14.0f,
+                0.6f);
 
     g.setColour (juce::Colour (lightGrey));
     g.setFont (juce::FontOptions (13.0f));
@@ -707,19 +747,25 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     g.drawHorizontalLine (layout.header.getBottom(), 0.0f, static_cast<float> (getWidth()));
 
     const auto presetBrowser = layout.presetBrowser.toFloat();
-    g.setColour (juce::Colour (0xff050404).withAlpha (0.45f));
-    g.fillRoundedRectangle (presetBrowser.translated (0.0f, 1.0f), 5.0f);
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff28231f), presetBrowser.getCentreX(), presetBrowser.getY(),
-                                             juce::Colour (0xff141110), presetBrowser.getCentreX(), presetBrowser.getBottom(), false));
+    g.setColour (juce::Colour (0xff020202).withAlpha (0.65f));
+    g.fillRoundedRectangle (presetBrowser.translated (0.0f, 2.0f), 5.0f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff302a25), presetBrowser.getCentreX(), presetBrowser.getY(),
+                                             juce::Colour (0xff0d0b0a), presetBrowser.getCentreX(), presetBrowser.getBottom(), false));
     g.fillRoundedRectangle (presetBrowser, 5.0f);
-    g.setColour (juce::Colour (0xff3e352f));
+    g.setColour (juce::Colour (0xff080706));
+    g.fillRoundedRectangle (presetBrowser.reduced (3.0f, 2.0f), 3.0f);
+    g.setColour (juce::Colour (0x28ffffff));
+    g.drawLine (presetBrowser.getX() + 6.0f, presetBrowser.getY() + 1.0f, presetBrowser.getRight() - 6.0f, presetBrowser.getY() + 1.0f, 1.0f);
+    g.setColour (juce::Colour (0xff4a4139));
     g.drawRoundedRectangle (presetBrowser, 5.0f, 1.0f);
-    g.setColour (juce::Colour (0x28ff6a1a));
+    g.setColour (juce::Colour (0x30ff6a1a));
     g.drawRoundedRectangle (presetBrowser.reduced (2.0f), 3.5f, 0.8f);
 
-    auto presetNameArea = layout.presetBrowser.reduced (42, 1);
-    g.setColour (juce::Colour (orange));
+    auto presetNameArea = layout.presetBrowser.reduced (46, 1);
     g.setFont (juce::FontOptions (13.5f, juce::Font::bold));
+    g.setColour (juce::Colour (0x44ff4f18));
+    g.drawText (getCurrentPresetName(), presetNameArea.translated (0, 1), juce::Justification::centred, false);
+    g.setColour (juce::Colour (orange));
     g.drawText (getCurrentPresetName(), presetNameArea, juce::Justification::centred, false);
 
     const auto display = layout.display.toFloat();
@@ -732,53 +778,55 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
 
     const auto displayMode = syncIsEnabled ? juce::String ("SYNC") : juce::String ("MANUAL");
 
-    g.setColour (juce::Colour (0xff050404).withAlpha (0.55f));
-    g.fillRoundedRectangle (display.translated (0.0f, 2.0f), 8.0f);
+    g.setColour (juce::Colour (0xff020202).withAlpha (0.72f));
+    g.fillRoundedRectangle (display.translated (0.0f, 3.0f), 8.0f);
 
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff383330), display.getCentreX(), display.getY(),
-                                             juce::Colour (0xff11100f), display.getCentreX(), display.getBottom(), false));
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff3d3732), display.getCentreX(), display.getY(),
+                                             juce::Colour (0xff0c0b0a), display.getCentreX(), display.getBottom(), false));
     g.fillRoundedRectangle (display, 8.0f);
 
+    g.setColour (juce::Colour (0x33ffffff));
+    g.drawLine (display.getX() + 8.0f, display.getY() + 1.0f, display.getRight() - 8.0f, display.getY() + 1.0f, 1.0f);
     g.setColour (juce::Colour (0xff080707));
     g.drawRoundedRectangle (display, 8.0f, 2.0f);
 
-    g.setColour (juce::Colour (0x33ff6a1a));
+    g.setColour (juce::Colour (0x42ff6a1a));
     g.drawRoundedRectangle (display.reduced (2.0f), 6.5f, 1.0f);
 
-    const auto screen = display.reduced (8.0f, 7.0f);
-    g.setColour (juce::Colour (0xff020202));
+    const auto screen = display.reduced (10.0f, 8.0f);
+    g.setColour (juce::Colour (0xff010101));
     g.fillRoundedRectangle (screen, 4.5f);
 
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff080605), screen.getCentreX(), screen.getY(),
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff0a0604), screen.getCentreX(), screen.getY(),
                                              juce::Colour (0xff000000), screen.getCentreX(), screen.getBottom(), false));
     g.fillRoundedRectangle (screen.reduced (1.0f), 4.0f);
 
-    g.setColour (juce::Colour (0x18ff4a18));
-    g.fillRoundedRectangle (screen.reduced (4.0f, 3.0f), 3.0f);
+    g.setColour (juce::Colour (0x24ff4a18));
+    g.fillRoundedRectangle (screen.reduced (5.0f, 4.0f), 3.0f);
 
-    g.setColour (juce::Colour (0xff020202));
-    g.fillRoundedRectangle (screen.reduced (6.0f, 5.0f), 2.5f);
+    g.setColour (juce::Colour (0xff010101));
+    g.fillRoundedRectangle (screen.reduced (8.0f, 6.0f), 2.5f);
 
-    g.setColour (juce::Colour (0xff1a1513));
+    g.setColour (juce::Colour (0xff1c1714));
     g.drawRoundedRectangle (screen, 4.5f, 1.0f);
-    g.setColour (juce::Colour (0x28ff7a22));
+    g.setColour (juce::Colour (0x35ff7a22));
     g.drawRoundedRectangle (screen.reduced (1.5f), 3.5f, 0.8f);
 
-    auto displayTextArea = screen.toNearestInt().reduced (18, 5);
-    auto modeArea = displayTextArea.removeFromTop (9);
-    displayTextArea.removeFromTop (4);
+    auto displayTextArea = screen.toNearestInt().reduced (22, 5);
+    auto modeArea = displayTextArea.removeFromTop (8);
+    displayTextArea.removeFromTop (5);
 
-    g.setColour (juce::Colour (0xff918984));
-    g.setFont (juce::FontOptions (7.5f, juce::Font::bold));
+    g.setColour (juce::Colour (0xff9b938c));
+    g.setFont (juce::FontOptions (7.0f, juce::Font::bold));
     g.drawText (displayMode, modeArea, juce::Justification::centred);
 
-    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.setColour (juce::Colour (0x22ff3a12));
+    g.setFont (juce::FontOptions (22.5f, juce::Font::bold));
+    g.setColour (juce::Colour (0x28ff2f0f));
+    g.drawText (displayValue, displayTextArea.translated (0, 3), juce::Justification::centred);
+    g.setColour (juce::Colour (0x66ff4f18));
     g.drawText (displayValue, displayTextArea.translated (0, 2), juce::Justification::centred);
-    g.setColour (juce::Colour (0x55ff4f18));
-    g.drawText (displayValue, displayTextArea.translated (0, 1), juce::Justification::centred);
     g.setColour (juce::Colour (0xffff7a22));
-    g.drawText (displayValue, displayTextArea, juce::Justification::centred);
+    g.drawText (displayValue, displayTextArea.translated (0, 1), juce::Justification::centred);
 
     drawPanel (g, layout.input, "INPUT");
     drawPanel (g, layout.delay, "DELAY");
