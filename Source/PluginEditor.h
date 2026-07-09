@@ -100,6 +100,7 @@ private:
     juce::String getCurrentPresetName() const;
     void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, ValueFormat valueFormat);
     void updateTimeValueLabel();
+    void updateMeterLevels();
     void timerCallback() override;
 
     AuroraLookAndFeel lookAndFeel;
@@ -148,6 +149,8 @@ private:
     juce::TextButton presetNameButton;
     std::vector<juce::String> presetNames { "Deep Horizon", "Neon Rain", "Frozen Echoes", "Midnight Bloom", "Ghost Signal", "Infinite Sky" };
     int currentPresetIndex = 0;
+    std::array<float, 2> inputMeterLevels { 0.0f, 0.0f };
+    std::array<float, 2> outputMeterLevels { 0.0f, 0.0f };
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> timeAttachment;

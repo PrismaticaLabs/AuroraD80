@@ -30,6 +30,8 @@ namespace
         juce::Rectangle<int> header;
         juce::Rectangle<int> presetBrowser;
         juce::Rectangle<int> display;
+        juce::Rectangle<int> inputMeter;
+        juce::Rectangle<int> outputMeter;
         juce::Rectangle<int> input;
         juce::Rectangle<int> delay;
         juce::Rectangle<int> tone;
@@ -44,6 +46,8 @@ namespace
         layout.header = bounds.removeFromTop (60);
         layout.presetBrowser = { 250, 64, 300, 20 };
         layout.display = { 250, 88, 300, 48 };
+        layout.inputMeter = { 3, 138, 14, 264 };
+        layout.outputMeter = { 783, 138, 14, 264 };
         layout.input = { 18, 138, 110, 124 };
         layout.delay = { 138, 138, 300, 124 };
         layout.tone = { 448, 138, 190, 124 };
@@ -112,6 +116,67 @@ namespace
                                 juce::Label& valueLabel)
     {
         layoutKnob (panelContent (panel), 0, 1, slider, nameLabel, valueLabel, 82);
+    }
+
+    void drawStereoMeter (juce::Graphics& g,
+                          juce::Rectangle<int> bounds,
+                          const juce::String& title,
+                          const std::array<float, 2>& levels)
+    {
+        constexpr auto numSegments = 20;
+        const auto meter = bounds.toFloat();
+
+        g.setColour (juce::Colour (0xff050404).withAlpha (0.55f));
+        g.fillRoundedRectangle (meter.translated (0.0f, 1.0f), 4.0f);
+
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff24201d), meter.getCentreX(), meter.getY(),
+                                                 juce::Colour (0xff080707), meter.getCentreX(), meter.getBottom(), false));
+        g.fillRoundedRectangle (meter, 4.0f);
+
+        g.setColour (juce::Colour (0xff3e352f));
+        g.drawRoundedRectangle (meter, 4.0f, 1.0f);
+
+        auto content = bounds.reduced (2, 4);
+        auto titleArea = content.removeFromTop (26);
+        auto labelArea = content.removeFromBottom (13);
+        auto segmentArea = content.reduced (0, 2);
+        const auto segmentGap = 2;
+        const auto segmentHeight = juce::jmax (3, (segmentArea.getHeight() - ((numSegments - 1) * segmentGap)) / numSegments);
+        const auto columnWidth = juce::jmax (3, (segmentArea.getWidth() - 2) / 2);
+
+        g.setColour (juce::Colour (softOrange));
+        g.setFont (juce::FontOptions (6.5f, juce::Font::bold));
+
+        for (auto letter = 0; letter < title.length(); ++letter)
+            g.drawText (title.substring (letter, letter + 1),
+                        titleArea.removeFromTop (7),
+                        juce::Justification::centred,
+                        false);
+
+        for (auto channel = 0; channel < 2; ++channel)
+        {
+            const auto level = juce::jlimit (0.0f, 1.0f, levels[static_cast<size_t> (channel)]);
+            const auto litSegments = juce::roundToInt (level * static_cast<float> (numSegments));
+            const auto x = segmentArea.getX() + (channel * (columnWidth + 2));
+
+            for (auto segment = 0; segment < numSegments; ++segment)
+            {
+                const auto y = segmentArea.getBottom() - ((segment + 1) * segmentHeight) - (segment * segmentGap);
+                const auto isLit = segment < litSegments;
+                const auto colour = segment >= 17 ? juce::Colour (0xffff3b26)
+                                  : segment >= 13 ? juce::Colour (0xffffc542)
+                                                  : juce::Colour (0xff29d35f);
+
+                g.setColour (isLit ? colour : juce::Colour (0xff151312));
+                g.fillRoundedRectangle (static_cast<float> (x), static_cast<float> (y),
+                                        static_cast<float> (columnWidth), static_cast<float> (segmentHeight), 1.5f);
+            }
+        }
+
+        g.setColour (juce::Colour (valueWhite));
+        g.setFont (juce::FontOptions (7.0f, juce::Font::bold));
+        g.drawText ("L", labelArea.withWidth (columnWidth), juce::Justification::centred, false);
+        g.drawText ("R", labelArea.withTrimmedLeft (columnWidth + 2), juce::Justification::centred, false);
     }
 }
 
@@ -322,7 +387,7 @@ AuroraD80AudioProcessorEditor::AuroraD80AudioProcessorEditor (AuroraD80AudioProc
     updateValueLabel (mixSlider, mixValueLabel, ValueFormat::Percent);
     updateValueLabel (outputSlider, outputValueLabel, ValueFormat::Percent);
 
-    startTimerHz (15);
+    startTimerHz (45);
     setSize (800, 420);
 }
 
@@ -513,17 +578,39 @@ void AuroraD80AudioProcessorEditor::updateTimeValueLabel()
             divisionText = "1/4";
 
         timeValueLabel.setText (divisionText, juce::dontSendNotification);
-        repaint();
+        repaint (getRackLayout (getLocalBounds()).display);
         return;
     }
 
     updateValueLabel (timeSlider, timeValueLabel, ValueFormat::Milliseconds);
-    repaint();
+    repaint (getRackLayout (getLocalBounds()).display);
+}
+
+void AuroraD80AudioProcessorEditor::updateMeterLevels()
+{
+    auto updateLevel = [] (float current, float target)
+    {
+        const auto coefficient = target > current ? 0.35f : 0.08f;
+        return current + ((target - current) * coefficient);
+    };
+
+    for (auto channel = 0; channel < 2; ++channel)
+    {
+        inputMeterLevels[static_cast<size_t> (channel)] = updateLevel (inputMeterLevels[static_cast<size_t> (channel)],
+                                                                       audioProcessor.getInputRmsLevel (channel));
+        outputMeterLevels[static_cast<size_t> (channel)] = updateLevel (outputMeterLevels[static_cast<size_t> (channel)],
+                                                                        audioProcessor.getOutputRmsLevel (channel));
+    }
 }
 
 void AuroraD80AudioProcessorEditor::timerCallback()
 {
     updateTimeValueLabel();
+    updateMeterLevels();
+
+    const auto layout = getRackLayout (getLocalBounds());
+    repaint (layout.inputMeter.expanded (2));
+    repaint (layout.outputMeter.expanded (2));
 }
 
 //==============================================================================
@@ -624,6 +711,9 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     g.drawText (displayValue, displayTextArea.translated (0, 1), juce::Justification::centred);
     g.setColour (juce::Colour (0xffff7a22));
     g.drawText (displayValue, displayTextArea, juce::Justification::centred);
+
+    drawStereoMeter (g, layout.inputMeter, "INPUT", inputMeterLevels);
+    drawStereoMeter (g, layout.outputMeter, "OUTPUT", outputMeterLevels);
 
     drawPanel (g, layout.input, "INPUT");
     drawPanel (g, layout.delay, "DELAY");

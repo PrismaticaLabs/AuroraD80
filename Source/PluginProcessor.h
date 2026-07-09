@@ -57,6 +57,9 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    float getInputRmsLevel (int channel) const;
+    float getOutputRmsLevel (int channel) const;
+
     APVTS parameters;
 
 private:
@@ -75,6 +78,8 @@ private:
     double currentSampleRate = 44100.0;
     double lfoPhase = 0.0;
     uint32_t noiseState = 0x12345678;
+    std::array<std::atomic<float>, 2> inputRmsLevels;
+    std::array<std::atomic<float>, 2> outputRmsLevels;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuroraD80AudioProcessor)
 };

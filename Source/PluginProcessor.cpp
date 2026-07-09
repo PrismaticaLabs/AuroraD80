@@ -55,6 +55,20 @@ namespace
         state = (state * 1664525u) + 1013904223u;
         return (static_cast<float> ((state >> 8) & 0x00ffffff) / 8388607.5f) - 1.0f;
     }
+
+    float calculateRmsLevel (const juce::AudioBuffer<float>& buffer, int channel)
+    {
+        if (channel >= buffer.getNumChannels() || buffer.getNumSamples() <= 0)
+            return 0.0f;
+
+        auto sum = 0.0f;
+        const auto* samples = buffer.getReadPointer (channel);
+
+        for (auto sample = 0; sample < buffer.getNumSamples(); ++sample)
+            sum += samples[sample] * samples[sample];
+
+        return std::sqrt (sum / static_cast<float> (buffer.getNumSamples()));
+    }
 }
 
 //==============================================================================
@@ -258,11 +272,19 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     const auto totalNumOutputChannels = getTotalNumOutputChannels();
     const auto numSamples = buffer.getNumSamples();
 
+    for (auto channel = 0; channel < 2; ++channel)
+        inputRmsLevels[static_cast<size_t> (channel)].store (channel < totalNumInputChannels ? calculateRmsLevel (buffer, channel) : 0.0f);
+
     for (auto channel = totalNumInputChannels; channel < totalNumOutputChannels; ++channel)
         buffer.clear (channel, 0, numSamples);
 
     if (delayBuffer.getNumSamples() == 0)
+    {
+        for (auto channel = 0; channel < 2; ++channel)
+            outputRmsLevels[static_cast<size_t> (channel)].store (channel < totalNumOutputChannels ? calculateRmsLevel (buffer, channel) : 0.0f);
+
         return;
+    }
 
     const auto inputGain = parameters.getRawParameterValue ("inputGain")->load();
     auto delayTimeMs = parameters.getRawParameterValue ("delayTimeMs")->load();
@@ -375,6 +397,20 @@ void AuroraD80AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
         delayWritePosition = (delayWritePosition + 1) % delayBufferSize;
     }
+
+    for (auto channel = 0; channel < 2; ++channel)
+        outputRmsLevels[static_cast<size_t> (channel)].store (channel < totalNumOutputChannels ? calculateRmsLevel (buffer, channel) : 0.0f);
+}
+
+//==============================================================================
+float AuroraD80AudioProcessor::getInputRmsLevel (int channel) const
+{
+    return inputRmsLevels[static_cast<size_t> (juce::jlimit (0, 1, channel))].load();
+}
+
+float AuroraD80AudioProcessor::getOutputRmsLevel (int channel) const
+{
+    return outputRmsLevels[static_cast<size_t> (juce::jlimit (0, 1, channel))].load();
 }
 
 //==============================================================================
