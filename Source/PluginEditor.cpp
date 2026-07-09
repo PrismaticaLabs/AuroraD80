@@ -46,8 +46,8 @@ namespace
         layout.header = bounds.removeFromTop (60);
         layout.presetBrowser = { 250, 64, 300, 20 };
         layout.display = { 250, 88, 300, 48 };
-        layout.inputMeter = { 3, 138, 14, 264 };
-        layout.outputMeter = { 783, 138, 14, 264 };
+        layout.inputMeter = { 1, 138, 26, 264 };
+        layout.outputMeter = { 773, 138, 26, 264 };
         layout.input = { 18, 138, 110, 124 };
         layout.delay = { 138, 138, 300, 124 };
         layout.tone = { 448, 138, 190, 124 };
@@ -126,57 +126,90 @@ namespace
         constexpr auto numSegments = 20;
         const auto meter = bounds.toFloat();
 
-        g.setColour (juce::Colour (0xff050404).withAlpha (0.55f));
-        g.fillRoundedRectangle (meter.translated (0.0f, 1.0f), 4.0f);
+        g.setColour (juce::Colour (0xff030303).withAlpha (0.65f));
+        g.fillRoundedRectangle (meter.translated (0.0f, 2.0f), 5.0f);
 
-        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff24201d), meter.getCentreX(), meter.getY(),
-                                                 juce::Colour (0xff080707), meter.getCentreX(), meter.getBottom(), false));
-        g.fillRoundedRectangle (meter, 4.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2c2825), meter.getCentreX(), meter.getY(),
+                                                 juce::Colour (0xff070606), meter.getCentreX(), meter.getBottom(), false));
+        g.fillRoundedRectangle (meter, 5.0f);
 
-        g.setColour (juce::Colour (0xff3e352f));
-        g.drawRoundedRectangle (meter, 4.0f, 1.0f);
+        g.setColour (juce::Colour (0xff090807));
+        g.fillRoundedRectangle (meter.reduced (2.0f), 3.5f);
 
-        auto content = bounds.reduced (2, 4);
-        auto titleArea = content.removeFromTop (26);
+        g.setColour (juce::Colour (0xff4a4039));
+        g.drawRoundedRectangle (meter, 5.0f, 1.0f);
+        g.setColour (juce::Colour (0x20ff6a1a));
+        g.drawRoundedRectangle (meter.reduced (1.5f), 4.0f, 0.8f);
+
+        auto content = bounds.reduced (3, 5);
+        auto titleArea = content.removeFromTop (35);
         auto labelArea = content.removeFromBottom (13);
         auto segmentArea = content.reduced (0, 2);
+        auto scaleArea = segmentArea.removeFromLeft (9);
+        segmentArea.removeFromLeft (1);
+
         const auto segmentGap = 2;
-        const auto segmentHeight = juce::jmax (3, (segmentArea.getHeight() - ((numSegments - 1) * segmentGap)) / numSegments);
-        const auto columnWidth = juce::jmax (3, (segmentArea.getWidth() - 2) / 2);
+        const auto segmentHeight = juce::jmax (5, (segmentArea.getHeight() - ((numSegments - 1) * segmentGap)) / numSegments);
+        const auto columnGap = 2;
+        const auto columnWidth = juce::jmax (5, (segmentArea.getWidth() - columnGap) / 2);
 
         g.setColour (juce::Colour (softOrange));
-        g.setFont (juce::FontOptions (6.5f, juce::Font::bold));
+        g.setFont (juce::FontOptions (6.4f, juce::Font::bold));
 
         for (auto letter = 0; letter < title.length(); ++letter)
             g.drawText (title.substring (letter, letter + 1),
-                        titleArea.removeFromTop (7),
+                        titleArea.removeFromTop (6),
                         juce::Justification::centred,
                         false);
 
+        g.setFont (juce::FontOptions (5.7f));
+        g.setColour (juce::Colour (0xffa9a19b));
+
+        const int scaleValues[] = { 0, -6, -12, -18, -24, -36 };
+        for (auto value : scaleValues)
+        {
+            const auto normalised = juce::jlimit (0.0f, 1.0f, (static_cast<float> (value) + 36.0f) / 36.0f);
+            const auto y = segmentArea.getY() + juce::roundToInt ((1.0f - normalised) * static_cast<float> (segmentArea.getHeight() - 8));
+            g.drawText (juce::String (value), scaleArea.withY (y).withHeight (8), juce::Justification::centredRight, false);
+        }
+
         for (auto channel = 0; channel < 2; ++channel)
         {
-            const auto level = juce::jlimit (0.0f, 1.0f, levels[static_cast<size_t> (channel)]);
-            const auto litSegments = juce::roundToInt (level * static_cast<float> (numSegments));
-            const auto x = segmentArea.getX() + (channel * (columnWidth + 2));
+            const auto level = juce::jmax (0.0f, levels[static_cast<size_t> (channel)]);
+            const auto levelDb = juce::Decibels::gainToDecibels (level, -60.0f);
+            const auto normalisedLevel = juce::jlimit (0.0f, 1.0f, (levelDb + 36.0f) / 36.0f);
+            const auto litSegments = juce::roundToInt (normalisedLevel * static_cast<float> (numSegments));
+            const auto x = segmentArea.getX() + (channel * (columnWidth + columnGap));
 
             for (auto segment = 0; segment < numSegments; ++segment)
             {
                 const auto y = segmentArea.getBottom() - ((segment + 1) * segmentHeight) - (segment * segmentGap);
+                const auto led = juce::Rectangle<float> (static_cast<float> (x), static_cast<float> (y),
+                                                        static_cast<float> (columnWidth), static_cast<float> (segmentHeight));
                 const auto isLit = segment < litSegments;
-                const auto colour = segment >= 17 ? juce::Colour (0xffff3b26)
-                                  : segment >= 13 ? juce::Colour (0xffffc542)
-                                                  : juce::Colour (0xff29d35f);
+                const auto colour = segment >= 17 ? juce::Colour (0xffff3327)
+                                  : segment >= 13 ? juce::Colour (0xffffc63d)
+                                                  : juce::Colour (0xff27d75f);
 
-                g.setColour (isLit ? colour : juce::Colour (0xff151312));
-                g.fillRoundedRectangle (static_cast<float> (x), static_cast<float> (y),
-                                        static_cast<float> (columnWidth), static_cast<float> (segmentHeight), 1.5f);
+                if (isLit)
+                {
+                    g.setColour (colour.withAlpha (0.28f));
+                    g.fillRoundedRectangle (led.expanded (1.4f, 0.8f), 2.0f);
+                }
+
+                g.setColour (isLit ? colour : juce::Colour (0xff151211));
+                g.fillRoundedRectangle (led, 1.2f);
+
+                g.setColour (isLit ? juce::Colour (0x40ffffff) : juce::Colour (0x10ffffff));
+                g.drawHorizontalLine (y, static_cast<float> (x + 1), static_cast<float> (x + columnWidth - 1));
             }
         }
 
+        auto ledLabelArea = labelArea.withTrimmedLeft (10);
         g.setColour (juce::Colour (valueWhite));
         g.setFont (juce::FontOptions (7.0f, juce::Font::bold));
-        g.drawText ("L", labelArea.withWidth (columnWidth), juce::Justification::centred, false);
-        g.drawText ("R", labelArea.withTrimmedLeft (columnWidth + 2), juce::Justification::centred, false);
+        g.drawText ("L", ledLabelArea.withWidth (columnWidth), juce::Justification::centred, false);
+        g.drawText ("R", ledLabelArea.withTrimmedLeft (columnWidth + columnGap), juce::Justification::centred, false);
     }
 }
 
@@ -627,9 +660,41 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
                                              juce::Colour (headerBottom), 0.0f, static_cast<float> (layout.header.getBottom()), false));
     g.fillRect (layout.header);
 
-    g.setColour (juce::Colour (orange));
-    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.drawText ("AURORA D80", layout.header.withTrimmedBottom (18), juce::Justification::centred);
+    auto titleArea = layout.header.withTrimmedBottom (18).toFloat();
+    juce::Font titleFont (juce::FontOptions (24.0f, juce::Font::bold));
+    juce::GlyphArrangement titleGlyphs;
+    titleGlyphs.addFittedText (titleFont,
+                               "AURORA D80",
+                               titleArea.getX(),
+                               titleArea.getY() + 1.0f,
+                               titleArea.getWidth(),
+                               titleArea.getHeight(),
+                               juce::Justification::centred,
+                               1);
+
+    juce::Path titlePath;
+    titleGlyphs.createPath (titlePath);
+
+    g.setColour (juce::Colour (0xaa000000));
+    g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 2.0f));
+
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffffffff), titleArea.getCentreX(), titleArea.getY() + 4.0f,
+                                             juce::Colour (0xff77706a), titleArea.getCentreX(), titleArea.getBottom() - 2.0f,
+                                             false));
+    g.fillPath (titlePath);
+
+    g.setColour (juce::Colour (0x55ffffff));
+    g.strokePath (titlePath, juce::PathStrokeType (0.55f));
+
+    g.setColour (juce::Colour (0x33958d86));
+    g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 0.8f));
+
+    g.setColour (juce::Colour (0x66ffffff));
+    g.drawLine (titleArea.getX() + 296.0f,
+                titleArea.getY() + 15.0f,
+                titleArea.getRight() - 296.0f,
+                titleArea.getY() + 15.0f,
+                0.7f);
 
     g.setColour (juce::Colour (lightGrey));
     g.setFont (juce::FontOptions (13.0f));
@@ -712,15 +777,15 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xffff7a22));
     g.drawText (displayValue, displayTextArea, juce::Justification::centred);
 
-    drawStereoMeter (g, layout.inputMeter, "INPUT", inputMeterLevels);
-    drawStereoMeter (g, layout.outputMeter, "OUTPUT", outputMeterLevels);
-
     drawPanel (g, layout.input, "INPUT");
     drawPanel (g, layout.delay, "DELAY");
     drawPanel (g, layout.tone, "TONE");
     drawPanel (g, layout.modulation, "MODULATION");
     drawPanel (g, layout.character, "CHARACTER");
     drawPanel (g, layout.output, "OUTPUT");
+
+    drawStereoMeter (g, layout.inputMeter, "INPUT", inputMeterLevels);
+    drawStereoMeter (g, layout.outputMeter, "OUTPUT", outputMeterLevels);
 }
 
 void AuroraD80AudioProcessorEditor::resized()
