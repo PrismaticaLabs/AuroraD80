@@ -259,49 +259,94 @@ void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawRotarySlider (juce::G
     const auto bounds = juce::Rectangle<float> (static_cast<float> (x),
                                                 static_cast<float> (y),
                                                 static_cast<float> (width),
-                                                static_cast<float> (height)).reduced (4.0f);
+                                                static_cast<float> (height)).reduced (3.0f);
     const auto diameter = juce::jmin (bounds.getWidth(), bounds.getHeight());
-    const auto knob = bounds.withSizeKeepingCentre (diameter, diameter).reduced (3.0f);
+    const auto knob = bounds.withSizeKeepingCentre (diameter, diameter).reduced (3.5f);
     const auto radius = knob.getWidth() * 0.5f;
     const auto centre = knob.getCentre();
     const auto angle = rotaryStartAngle + (sliderPosProportional * (rotaryEndAngle - rotaryStartAngle));
 
-    g.setColour (juce::Colour (0xff080707).withAlpha (0.65f));
-    g.fillEllipse (knob.translated (0.0f, 2.0f));
+    g.setColour (juce::Colour (0xff020202).withAlpha (0.70f));
+    g.fillEllipse (knob.translated (0.0f, 3.0f).expanded (1.5f, 1.0f));
 
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff34302d), centre.x, knob.getY(),
-                                             juce::Colour (0xff11100f), centre.x, knob.getBottom(), false));
+    const auto tickOuter = radius + 3.0f;
+    const auto tickInner = radius - 1.5f;
+    for (auto i = 0; i <= 30; ++i)
+    {
+        const auto proportion = static_cast<float> (i) / 30.0f;
+        const auto tickAngle = rotaryStartAngle + (proportion * (rotaryEndAngle - rotaryStartAngle));
+        const auto isMajorTick = (i % 5) == 0;
+        const auto outer = centre.getPointOnCircumference (tickOuter, tickAngle);
+        const auto inner = centre.getPointOnCircumference (isMajorTick ? tickInner - 2.0f : tickInner, tickAngle);
+
+        g.setColour (juce::Colour (isMajorTick ? 0xffb8afa7 : 0xff746b64).withAlpha (isMajorTick ? 0.70f : 0.45f));
+        g.drawLine (inner.x, inner.y, outer.x, outer.y, isMajorTick ? 1.0f : 0.7f);
+    }
+
+    g.setColour (juce::Colour (0xff77706a));
+    g.drawEllipse (knob.expanded (1.0f), 1.1f);
+    g.setColour (juce::Colour (0xff191615));
     g.fillEllipse (knob);
 
-    g.setColour (juce::Colour (0xff4a433e));
-    g.drawEllipse (knob, 1.2f);
+    juce::ColourGradient outerBevel (juce::Colour (0xff5a554f), centre.x - radius * 0.45f, centre.y - radius * 0.55f,
+                                     juce::Colour (0xff080706), centre.x + radius * 0.35f, centre.y + radius * 0.55f,
+                                     false);
+    outerBevel.addColour (0.45, juce::Colour (0xff2d2926));
+    g.setGradientFill (outerBevel);
+    g.fillEllipse (knob.reduced (1.0f));
 
-    g.setColour (juce::Colour (0xff171514));
-    g.fillEllipse (knob.reduced (7.0f));
+    g.setColour (juce::Colour (0xff0a0908));
+    g.drawEllipse (knob.reduced (2.0f), 1.4f);
+    g.setColour (juce::Colour (0xff918982).withAlpha (0.52f));
+    g.drawEllipse (knob.reduced (3.0f), 0.8f);
 
-    g.setColour (juce::Colour (0xff2b2724));
-    g.drawEllipse (knob.reduced (7.0f), 1.0f);
+    const auto body = knob.reduced (7.0f);
+    juce::ColourGradient bodyGradient (juce::Colour (0xff3a3632), centre.x - radius * 0.36f, centre.y - radius * 0.42f,
+                                       juce::Colour (0xff0b0a09), centre.x + radius * 0.40f, centre.y + radius * 0.48f,
+                                       true);
+    bodyGradient.addColour (0.38, juce::Colour (0xff24211f));
+    bodyGradient.addColour (0.78, juce::Colour (0xff11100f));
+    g.setGradientFill (bodyGradient);
+    g.fillEllipse (body);
 
-    const auto arcBounds = knob.reduced (2.5f);
+    g.setColour (juce::Colour (0xff080707));
+    g.drawEllipse (body, 1.2f);
+    g.setColour (juce::Colour (0x30ffffff));
+    g.drawEllipse (body.reduced (2.0f), 0.55f);
+
+    const auto arcRadius = radius + 0.5f;
     juce::Path backgroundArc;
-    backgroundArc.addCentredArc (centre.x, centre.y, radius - 2.5f, radius - 2.5f,
+    backgroundArc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius,
                                  0.0f, rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (juce::Colour (0xff3a302b));
-    g.strokePath (backgroundArc, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour (juce::Colour (0xff2b211d));
+    g.strokePath (backgroundArc, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
     juce::Path valueArc;
-    valueArc.addCentredArc (centre.x, centre.y, radius - 2.5f, radius - 2.5f,
+    valueArc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius,
                             0.0f, rotaryStartAngle, angle, true);
+    g.setColour (juce::Colour (0x55ff4f18));
+    g.strokePath (valueArc, juce::PathStrokeType (4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour (juce::Colour (orange));
-    g.strokePath (valueArc, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath (valueArc, juce::PathStrokeType (2.1f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    const auto indicatorRadius = radius - 13.0f;
-    const auto indicator = centre.getPointOnCircumference (indicatorRadius, angle);
+    const auto indicatorInner = centre.getPointOnCircumference (radius * 0.20f, angle);
+    const auto indicatorOuter = centre.getPointOnCircumference (radius * 0.70f, angle);
+    g.setColour (juce::Colour (0x55ff4f18));
+    g.drawLine (indicatorInner.x, indicatorInner.y, indicatorOuter.x, indicatorOuter.y, 3.0f);
     g.setColour (juce::Colour (0xffffb36f));
-    g.fillEllipse (indicator.x - 2.2f, indicator.y - 2.2f, 4.4f, 4.4f);
+    g.drawLine (indicatorInner.x, indicatorInner.y, indicatorOuter.x, indicatorOuter.y, 1.4f);
 
-    g.setColour (juce::Colour (0x28ffffff));
-    g.drawEllipse (arcBounds.reduced (7.5f), 0.6f);
+    const auto indicatorDot = centre.getPointOnCircumference (radius * 0.78f, angle);
+    g.setColour (juce::Colour (0x55ff4f18));
+    g.fillEllipse (indicatorDot.x - 3.2f, indicatorDot.y - 3.2f, 6.4f, 6.4f);
+    g.setColour (juce::Colour (0xffffb36f));
+    g.fillEllipse (indicatorDot.x - 2.0f, indicatorDot.y - 2.0f, 4.0f, 4.0f);
+
+    const auto highlight = body.withSizeKeepingCentre (body.getWidth() * 0.52f, body.getHeight() * 0.30f)
+                               .translated (-body.getWidth() * 0.12f, -body.getHeight() * 0.18f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0x36ffffff), highlight.getCentreX(), highlight.getY(),
+                                             juce::Colour (0x00ffffff), highlight.getCentreX(), highlight.getBottom(), false));
+    g.fillEllipse (highlight);
 }
 
 void AuroraD80AudioProcessorEditor::AuroraLookAndFeel::drawComboBox (juce::Graphics& g,
@@ -714,30 +759,41 @@ void AuroraD80AudioProcessorEditor::paint (juce::Graphics& g)
     juce::Path titlePath;
     titleGlyphs.createPath (titlePath);
 
-    g.setColour (juce::Colour (0xbb000000));
-    g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 2.0f));
+    g.setColour (juce::Colour (0xcc000000));
+    g.fillPath (titlePath, juce::AffineTransform::translation (0.0f, 2.3f));
 
-    juce::ColourGradient titleGradient (juce::Colour (0xfff1eee7), titleArea.getCentreX(), titleArea.getY() + 3.0f,
-                                        juce::Colour (0xff6f6963), titleArea.getCentreX(), titleArea.getBottom() - 2.0f,
+    g.setColour (juce::Colour (0x1cfff2dc));
+    g.fillPath (titlePath, juce::AffineTransform::translation (-1.1f, -0.4f));
+    g.fillPath (titlePath, juce::AffineTransform::translation (1.1f, -0.2f));
+
+    juce::ColourGradient titleGradient (juce::Colour (0xfff7f4ec), titleArea.getCentreX(), titleArea.getY() + 2.0f,
+                                        juce::Colour (0xff6d6761), titleArea.getCentreX(), titleArea.getBottom() - 1.0f,
                                         false);
-    titleGradient.addColour (0.34, juce::Colour (0xffb8b1a9));
-    titleGradient.addColour (0.52, juce::Colour (0xfff7f2e8));
-    titleGradient.addColour (0.76, juce::Colour (0xff8d867e));
+    titleGradient.addColour (0.28, juce::Colour (0xffc8c1b8));
+    titleGradient.addColour (0.48, juce::Colour (0xffffffff));
+    titleGradient.addColour (0.72, juce::Colour (0xff9b948c));
     g.setGradientFill (titleGradient);
     g.fillPath (titlePath);
 
-    g.setColour (juce::Colour (0x66ffffff));
+    g.setColour (juce::Colour (0x88ffffff));
     g.strokePath (titlePath, juce::PathStrokeType (0.45f));
 
-    g.setColour (juce::Colour (0x44000000));
-    g.strokePath (titlePath, juce::PathStrokeType (1.0f), juce::AffineTransform::translation (0.0f, 1.0f));
+    g.setColour (juce::Colour (0x55000000));
+    g.strokePath (titlePath, juce::PathStrokeType (1.0f), juce::AffineTransform::translation (0.0f, 1.1f));
 
-    g.setColour (juce::Colour (0x55ffffff));
+    g.setColour (juce::Colour (0x66fff7e8));
+    g.drawLine (titleArea.getX() + 297.0f,
+                titleArea.getY() + 13.5f,
+                titleArea.getRight() - 297.0f,
+                titleArea.getY() + 13.5f,
+                0.65f);
+
+    g.setColour (juce::Colour (0x22000000));
     g.drawLine (titleArea.getX() + 298.0f,
-                titleArea.getY() + 14.0f,
+                titleArea.getY() + 25.5f,
                 titleArea.getRight() - 298.0f,
-                titleArea.getY() + 14.0f,
-                0.6f);
+                titleArea.getY() + 25.5f,
+                0.7f);
 
     g.setColour (juce::Colour (lightGrey));
     g.setFont (juce::FontOptions (13.0f));
