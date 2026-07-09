@@ -46,14 +46,14 @@ namespace
         layout.header = bounds.removeFromTop (60);
         layout.presetBrowser = { 250, 64, 300, 20 };
         layout.display = { 250, 88, 300, 48 };
-        layout.inputMeter = { 1, 138, 26, 264 };
-        layout.outputMeter = { 773, 138, 26, 264 };
-        layout.input = { 18, 138, 110, 124 };
-        layout.delay = { 138, 138, 300, 124 };
-        layout.tone = { 448, 138, 190, 124 };
-        layout.output = { 648, 138, 134, 124 };
-        layout.modulation = { 168, 278, 220, 124 };
-        layout.character = { 412, 278, 220, 124 };
+        layout.inputMeter = { 8, 138, 82, 264 };
+        layout.outputMeter = { 710, 138, 82, 264 };
+        layout.input = { 100, 138, 76, 124 };
+        layout.delay = { 184, 138, 270, 124 };
+        layout.tone = { 462, 138, 144, 124 };
+        layout.output = { 614, 138, 86, 124 };
+        layout.modulation = { 184, 278, 210, 124 };
+        layout.character = { 406, 278, 210, 124 };
         return layout;
     }
 
@@ -126,51 +126,54 @@ namespace
         constexpr auto numSegments = 20;
         const auto meter = bounds.toFloat();
 
-        g.setColour (juce::Colour (0xff030303).withAlpha (0.65f));
-        g.fillRoundedRectangle (meter.translated (0.0f, 2.0f), 5.0f);
+        g.setColour (juce::Colour (0xff030303).withAlpha (0.72f));
+        g.fillRoundedRectangle (meter.translated (0.0f, 2.0f), 7.0f);
 
-        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2c2825), meter.getCentreX(), meter.getY(),
-                                                 juce::Colour (0xff070606), meter.getCentreX(), meter.getBottom(), false));
-        g.fillRoundedRectangle (meter, 5.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff302c28), meter.getCentreX(), meter.getY(),
+                                                 juce::Colour (0xff0a0908), meter.getCentreX(), meter.getBottom(), false));
+        g.fillRoundedRectangle (meter, 7.0f);
 
-        g.setColour (juce::Colour (0xff090807));
-        g.fillRoundedRectangle (meter.reduced (2.0f), 3.5f);
+        g.setColour (juce::Colour (0x22ffffff));
+        g.drawRoundedRectangle (meter.reduced (1.0f), 6.0f, 1.0f);
+        g.setColour (juce::Colour (0xff4b423b));
+        g.drawRoundedRectangle (meter, 7.0f, 1.1f);
 
-        g.setColour (juce::Colour (0xff4a4039));
-        g.drawRoundedRectangle (meter, 5.0f, 1.0f);
-        g.setColour (juce::Colour (0x20ff6a1a));
-        g.drawRoundedRectangle (meter.reduced (1.5f), 4.0f, 0.8f);
+        auto content = bounds.reduced (8, 8);
+        auto titleArea = content.removeFromTop (24);
+        auto labelArea = content.removeFromBottom (16);
+        auto meterBay = content.reduced (0, 2);
 
-        auto content = bounds.reduced (3, 5);
-        auto titleArea = content.removeFromTop (35);
-        auto labelArea = content.removeFromBottom (13);
-        auto segmentArea = content.reduced (0, 2);
-        auto scaleArea = segmentArea.removeFromLeft (9);
-        segmentArea.removeFromLeft (1);
+        g.setColour (juce::Colour (softOrange));
+        g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+        g.drawText (title, titleArea, juce::Justification::centred, false);
+
+        g.setColour (juce::Colour (0xff040404));
+        g.fillRoundedRectangle (meterBay.toFloat(), 3.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff151311), meterBay.getCentreX(), static_cast<float> (meterBay.getY()),
+                                                 juce::Colour (0xff050404), meterBay.getCentreX(), static_cast<float> (meterBay.getBottom()), false));
+        g.fillRoundedRectangle (meterBay.toFloat().reduced (1.0f), 2.5f);
+        g.setColour (juce::Colour (0xff2c2622));
+        g.drawRoundedRectangle (meterBay.toFloat(), 3.0f, 1.0f);
+
+        auto bayContent = meterBay.reduced (5, 7);
+        auto scaleArea = bayContent.removeFromLeft (22);
+        bayContent.removeFromLeft (4);
+        auto segmentArea = bayContent;
 
         const auto segmentGap = 2;
         const auto segmentHeight = juce::jmax (5, (segmentArea.getHeight() - ((numSegments - 1) * segmentGap)) / numSegments);
-        const auto columnGap = 2;
-        const auto columnWidth = juce::jmax (5, (segmentArea.getWidth() - columnGap) / 2);
+        const auto columnGap = 4;
+        const auto columnWidth = juce::jmax (9, (segmentArea.getWidth() - columnGap) / 2);
 
-        g.setColour (juce::Colour (softOrange));
-        g.setFont (juce::FontOptions (6.4f, juce::Font::bold));
-
-        for (auto letter = 0; letter < title.length(); ++letter)
-            g.drawText (title.substring (letter, letter + 1),
-                        titleArea.removeFromTop (6),
-                        juce::Justification::centred,
-                        false);
-
-        g.setFont (juce::FontOptions (5.7f));
-        g.setColour (juce::Colour (0xffa9a19b));
+        g.setFont (juce::FontOptions (8.0f));
+        g.setColour (juce::Colour (0xffbeb5ae));
 
         const int scaleValues[] = { 0, -6, -12, -18, -24, -36 };
         for (auto value : scaleValues)
         {
             const auto normalised = juce::jlimit (0.0f, 1.0f, (static_cast<float> (value) + 36.0f) / 36.0f);
-            const auto y = segmentArea.getY() + juce::roundToInt ((1.0f - normalised) * static_cast<float> (segmentArea.getHeight() - 8));
-            g.drawText (juce::String (value), scaleArea.withY (y).withHeight (8), juce::Justification::centredRight, false);
+            const auto y = segmentArea.getY() + juce::roundToInt ((1.0f - normalised) * static_cast<float> (segmentArea.getHeight() - 10));
+            g.drawText (juce::String (value), scaleArea.withY (y).withHeight (10), juce::Justification::centredRight, false);
         }
 
         for (auto channel = 0; channel < 2; ++channel)
@@ -187,27 +190,27 @@ namespace
                 const auto led = juce::Rectangle<float> (static_cast<float> (x), static_cast<float> (y),
                                                         static_cast<float> (columnWidth), static_cast<float> (segmentHeight));
                 const auto isLit = segment < litSegments;
-                const auto colour = segment >= 17 ? juce::Colour (0xffff3327)
-                                  : segment >= 13 ? juce::Colour (0xffffc63d)
-                                                  : juce::Colour (0xff27d75f);
+                const auto colour = segment >= 17 ? juce::Colour (0xffff3428)
+                                  : segment >= 13 ? juce::Colour (0xffffc737)
+                                                  : juce::Colour (0xff2ade62);
 
                 if (isLit)
                 {
-                    g.setColour (colour.withAlpha (0.28f));
-                    g.fillRoundedRectangle (led.expanded (1.4f, 0.8f), 2.0f);
+                    g.setColour (colour.withAlpha (0.30f));
+                    g.fillRoundedRectangle (led.expanded (2.0f, 1.0f), 2.0f);
                 }
 
-                g.setColour (isLit ? colour : juce::Colour (0xff151211));
+                g.setColour (isLit ? colour : juce::Colour (0xff141110));
                 g.fillRoundedRectangle (led, 1.2f);
 
-                g.setColour (isLit ? juce::Colour (0x40ffffff) : juce::Colour (0x10ffffff));
-                g.drawHorizontalLine (y, static_cast<float> (x + 1), static_cast<float> (x + columnWidth - 1));
+                g.setColour (isLit ? juce::Colour (0x55ffffff) : juce::Colour (0x10ffffff));
+                g.drawHorizontalLine (y, led.getX() + 1.0f, led.getRight() - 1.0f);
             }
         }
 
-        auto ledLabelArea = labelArea.withTrimmedLeft (10);
+        auto ledLabelArea = labelArea.withTrimmedLeft (31);
         g.setColour (juce::Colour (valueWhite));
-        g.setFont (juce::FontOptions (7.0f, juce::Font::bold));
+        g.setFont (juce::FontOptions (9.0f, juce::Font::bold));
         g.drawText ("L", ledLabelArea.withWidth (columnWidth), juce::Justification::centred, false);
         g.drawText ("R", ledLabelArea.withTrimmedLeft (columnWidth + columnGap), juce::Justification::centred, false);
     }
