@@ -1,9 +1,11 @@
 /*
+
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin processor.
 
   ==============================================================================
+
 */
 
 #pragma once
@@ -16,6 +18,8 @@
 class AuroraD80AudioProcessor  : public juce::AudioProcessor
 {
 public:
+    using APVTS = juce::AudioProcessorValueTreeState;
+
     //==============================================================================
     AuroraD80AudioProcessor();
     ~AuroraD80AudioProcessor() override;
@@ -53,7 +57,15 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    APVTS parameters;
+
 private:
     //==============================================================================
+    static APVTS::ParameterLayout createParameterLayout();
+
+    juce::AudioBuffer<float> delayBuffer;
+    int delayWritePosition = 0;
+    double currentSampleRate = 44100.0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuroraD80AudioProcessor)
 };

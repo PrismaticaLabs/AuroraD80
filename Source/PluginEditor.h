@@ -1,9 +1,11 @@
 /*
+
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin editor.
 
   ==============================================================================
+
 */
 
 #pragma once
@@ -25,9 +27,29 @@ public:
     void resized() override;
 
 private:
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
+    using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+
+    void configureSlider (juce::Slider& slider, juce::Label& label, const juce::String& labelText);
+
     AuroraD80AudioProcessor& audioProcessor;
+
+    juce::Slider inputSlider;
+    juce::Slider timeSlider;
+    juce::Slider feedbackSlider;
+    juce::Slider mixSlider;
+    juce::Slider outputSlider;
+
+    juce::Label inputLabel;
+    juce::Label timeLabel;
+    juce::Label feedbackLabel;
+    juce::Label mixLabel;
+    juce::Label outputLabel;
+
+    std::unique_ptr<SliderAttachment> inputAttachment;
+    std::unique_ptr<SliderAttachment> timeAttachment;
+    std::unique_ptr<SliderAttachment> feedbackAttachment;
+    std::unique_ptr<SliderAttachment> mixAttachment;
+    std::unique_ptr<SliderAttachment> outputAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuroraD80AudioProcessorEditor)
 };
