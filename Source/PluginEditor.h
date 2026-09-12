@@ -1,29 +1,15 @@
-/*
-
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
-
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-//==============================================================================
-/**
-*/
-class AuroraD80AudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                       private juce::Timer
+class AuroraD80AudioProcessorEditor : public juce::AudioProcessorEditor,
+                                      private juce::Timer
 {
 public:
-    AuroraD80AudioProcessorEditor (AuroraD80AudioProcessor&);
+    explicit AuroraD80AudioProcessorEditor (AuroraD80AudioProcessor&);
     ~AuroraD80AudioProcessorEditor() override;
 
-    //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -36,135 +22,136 @@ private:
     {
     public:
         AuroraLookAndFeel();
-
-        void drawRotarySlider (juce::Graphics& g,
-                               int x,
-                               int y,
-                               int width,
-                               int height,
-                               float sliderPosProportional,
-                               float rotaryStartAngle,
-                               float rotaryEndAngle,
-                               juce::Slider& slider) override;
-
-        void drawComboBox (juce::Graphics& g,
-                           int width,
-                           int height,
-                           bool isButtonDown,
-                           int buttonX,
-                           int buttonY,
-                           int buttonW,
-                           int buttonH,
-                           juce::ComboBox& box) override;
-
-        juce::Font getComboBoxFont (juce::ComboBox& box) override;
-
-        void drawToggleButton (juce::Graphics& g,
-                               juce::ToggleButton& button,
-                               bool shouldDrawButtonAsHighlighted,
-                               bool shouldDrawButtonAsDown) override;
-    };
-
-    class PresetArrowButton final : public juce::Button
-    {
-    public:
-        explicit PresetArrowButton (const juce::String& arrowText);
-
-        void paintButton (juce::Graphics& g,
-                          bool shouldDrawButtonAsHighlighted,
-                          bool shouldDrawButtonAsDown) override;
+        void drawRotarySlider (juce::Graphics&, int, int, int, int, float, float, float, juce::Slider&) override;
+        void drawComboBox (juce::Graphics&, int, int, bool, int, int, int, int, juce::ComboBox&) override;
+        juce::Font getComboBoxFont (juce::ComboBox&) override;
+        juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
+        juce::Font getPopupMenuFont() override;
+        void drawPopupMenuBackground (juce::Graphics&, int width, int height) override;
+        void drawPopupMenuBackgroundWithOptions (juce::Graphics&, int width, int height,
+                                                 const juce::PopupMenu::Options&) override;
+        void drawPopupMenuItem (juce::Graphics&, const juce::Rectangle<int>& area,
+                                bool isSeparator, bool isActive, bool isHighlighted,
+                                bool isTicked, bool hasSubMenu, const juce::String& text,
+                                const juce::String& shortcutKeyText,
+                                const juce::Drawable* icon, const juce::Colour* textColour) override;
+        void getIdealPopupMenuItemSize (const juce::String&, bool isSeparator,
+                                        int standardMenuItemHeight, int& idealWidth, int& idealHeight) override;
+        int getPopupMenuBorderSize() override;
+        int getPopupMenuBorderSizeWithOptions (const juce::PopupMenu::Options&) override;
+        void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool, bool) override;
 
     private:
-        juce::String arrow;
+        juce::Image knobBody;
+        std::unique_ptr<juce::Drawable> knobTicks, knobShadow, knobBezel;
+        std::unique_ptr<juce::Drawable> knobPointerGlow, knobPointer, knobPointerHighlight;
     };
 
-    enum class ValueFormat
+    class DesignSurface final : public juce::Component
     {
-        Percent,
-        ModPercent,
-        Milliseconds,
-        Hz,
-        KHz,
-        RateHz
+    public:
+        explicit DesignSurface (AuroraD80AudioProcessorEditor& o) : owner (o) { setOpaque (true); }
+        void paint (juce::Graphics& g) override { owner.paintDesign (g); }
+        void mouseDown (const juce::MouseEvent& e) override;
+    private:
+        AuroraD80AudioProcessorEditor& owner;
     };
 
-    void configureSlider (juce::Slider& slider,
-                          juce::Label& nameLabel,
-                          juce::Label& valueLabel,
-                          const juce::String& labelText,
-                          ValueFormat valueFormat);
-    void configureSyncControls();
+    enum class ValueFormat { GainDb, Percent01, Percent100, Milliseconds, Hz, KHz, RateHz };
+
+    void paintDesign (juce::Graphics&);
+    void configureSlider (juce::Slider&, juce::Label&, juce::Label&, const juce::String&, ValueFormat);
+    void configureChoice (juce::ComboBox&, const juce::StringArray&);
+    void configureButton (juce::TextButton&, const juce::String&, bool toggle = true);
     void configurePresetBrowser();
-    void showPreviousPreset();
-    void showNextPreset();
-    juce::String getCurrentPresetName() const;
-    void updateValueLabel (juce::Slider& slider, juce::Label& valueLabel, ValueFormat valueFormat);
-    void updateTimeValueLabel();
-    void updateMeterLevels();
+    void updateValueLabel (juce::Slider&, juce::Label&, ValueFormat);
+    void updateDynamicText();
+    void syncPresetIdentity();
+    void updateMeters();
     void timerCallback() override;
+    void applyPreset (int index);
+    void showFactoryPresetMenu();
+    void showMainMenu();
+    void showPresetBrowser();
+    void showSavePresetBrowser();
+    void showSettingsPanel();
+    void showFeedbackPanel();
+    void showChoiceMenu (juce::ComboBox&, juce::Point<int>, const juce::StringArray&);
+    void setEditorScale (float scale);
+    void closeOverlay();
+    void randomiseMusicalParameters();
+    void saveSnapshotToSlot (int slot);
+    void recallSnapshotFromSlot (int slot);
 
-    AuroraLookAndFeel lookAndFeel;
     AuroraD80AudioProcessor& audioProcessor;
+    AuroraLookAndFeel lookAndFeel;
+    DesignSurface designSurface;
 
-    juce::Slider inputSlider;
-    juce::Slider timeSlider;
-    juce::Slider lowCutSlider;
-    juce::Slider highCutSlider;
-    juce::Slider depthSlider;
-    juce::Slider rateSlider;
-    juce::Slider driveSlider;
-    juce::Slider vintageSlider;
-    juce::Slider feedbackSlider;
-    juce::Slider mixSlider;
-    juce::Slider outputSlider;
+    // Core controls
+    juce::Slider inputSlider, outputSlider, timeSlider, feedbackSlider, mixSlider;
+    juce::Slider lowCutSlider, highCutSlider, widthSlider;
+    juce::Slider depthSlider, rateSlider, driftSlider;
+    juce::Slider driveSlider, evolveSlider, bloomSlider;
 
-    juce::Label inputLabel;
-    juce::Label timeLabel;
-    juce::Label lowCutLabel;
-    juce::Label highCutLabel;
-    juce::Label depthLabel;
-    juce::Label rateLabel;
-    juce::Label driveLabel;
-    juce::Label vintageLabel;
-    juce::Label feedbackLabel;
-    juce::Label mixLabel;
-    juce::Label outputLabel;
+    juce::Label inputLabel, outputLabel, timeLabel, feedbackLabel, mixLabel;
+    juce::Label lowCutLabel, highCutLabel, widthLabel;
+    juce::Label depthLabel, rateLabel, driftLabel;
+    juce::Label driveLabel, evolveLabel, bloomLabel;
 
-    juce::Label inputValueLabel;
-    juce::Label timeValueLabel;
-    juce::Label lowCutValueLabel;
-    juce::Label highCutValueLabel;
-    juce::Label depthValueLabel;
-    juce::Label rateValueLabel;
-    juce::Label driveValueLabel;
-    juce::Label vintageValueLabel;
-    juce::Label feedbackValueLabel;
-    juce::Label mixValueLabel;
-    juce::Label outputValueLabel;
+    juce::Label inputValue, outputValue, timeValue, feedbackValue, mixValue;
+    juce::Label lowCutValue, highCutValue, widthValue;
+    juce::Label depthValue, rateValue, driftValue;
+    juce::Label driveValue, evolveValue, bloomValue;
 
-    juce::ToggleButton syncButton;
-    juce::ComboBox divisionBox;
-    PresetArrowButton previousPresetButton { "<" };
-    PresetArrowButton nextPresetButton { ">" };
-    juce::TextButton presetNameButton;
-    std::vector<juce::String> presetNames { "Deep Horizon", "Neon Rain", "Frozen Echoes", "Midnight Bloom", "Ghost Signal", "Infinite Sky" };
+    juce::TextButton syncButton, pingPongButton;
+    juce::ComboBox divisionBox, shapeBox;
+
+    // Utility bar
+    juce::ComboBox modeBox, oversamplingBox;
+    juce::Slider qualitySlider;
+    juce::TextButton modeCycleButton, oversamplingCycleButton;
+    juce::TextButton freezeButton, bypassButton;
+
+    // Preset / workflow bar
+    juce::TextButton previousPresetButton { "‹" }, nextPresetButton { "›" };
+    juce::TextButton loadButton { "LOAD" }, saveAsButton { "SAVE AS" };
+    juce::TextButton aButton { "A" }, bButton { "B" }, undoRedoButton { "UNDO/REDO" };
+    juce::TextButton diceButton { "⚄" }, menuButton { "☰" };
+    juce::TextButton presetDisplayButton;
+    juce::TextButton favouriteButton;
+    juce::Label presetNumberLabel, presetNameLabel;
+    std::unique_ptr<juce::Component> activeOverlay;
+    std::vector<juce::String> presetNames;
     int currentPresetIndex = 0;
+    bool presetIdentityValid = false;
+    juce::ValueTree snapshotA { "Snapshot" }, snapshotB { "Snapshot" };
+    juce::ValueTree undoState { "Snapshot" };
+
     std::array<float, 2> inputMeterLevels { 0.0f, 0.0f };
     std::array<float, 2> outputMeterLevels { 0.0f, 0.0f };
+    float waveformPhase = 0.0f;
+   #if JUCE_DEBUG
+    bool debugSnapshotWritten = false;
+   #endif
 
-    std::unique_ptr<SliderAttachment> inputAttachment;
-    std::unique_ptr<SliderAttachment> timeAttachment;
-    std::unique_ptr<SliderAttachment> lowCutAttachment;
-    std::unique_ptr<SliderAttachment> highCutAttachment;
-    std::unique_ptr<SliderAttachment> depthAttachment;
-    std::unique_ptr<SliderAttachment> rateAttachment;
-    std::unique_ptr<SliderAttachment> driveAttachment;
-    std::unique_ptr<SliderAttachment> vintageAttachment;
-    std::unique_ptr<SliderAttachment> feedbackAttachment;
-    std::unique_ptr<SliderAttachment> mixAttachment;
-    std::unique_ptr<SliderAttachment> outputAttachment;
-    std::unique_ptr<ButtonAttachment> syncAttachment;
-    std::unique_ptr<ComboBoxAttachment> divisionAttachment;
+    // Figma production artwork (embedded by Projucer after FETCH_FIGMA_ASSETS.command).
+    juce::Image chassisImage, headerImage, displayImage, inputMeterImage, outputMeterImage;
+    juce::Image delayCoreImage, toneStereoImage, modCharacterImage, utilityBarImage, legacyUtilityBarImage, presetBarImage;
+    std::unique_ptr<juce::Drawable> headerBrand, freezeIcon, bypassIcon;
+    juce::Typeface::Ptr breeSerifTypeface, arimoTypeface;
+    int activeSnapshotSlot = 0;
+    float editorScale = 0.75f;
+    bool graphicsAccelerationEnabled = false;
+    bool hqOversamplingEnabled = false;
+
+    // Attachments
+    std::unique_ptr<SliderAttachment> inputAttachment, outputAttachment, timeAttachment, feedbackAttachment, mixAttachment;
+    std::unique_ptr<SliderAttachment> lowCutAttachment, highCutAttachment, widthAttachment;
+    std::unique_ptr<SliderAttachment> depthAttachment, rateAttachment, driftAttachment;
+    std::unique_ptr<SliderAttachment> driveAttachment, evolveAttachment, bloomAttachment;
+    std::unique_ptr<ButtonAttachment> syncAttachment, pingPongAttachment, freezeAttachment, bypassAttachment;
+    std::unique_ptr<ComboBoxAttachment> divisionAttachment, shapeAttachment, modeAttachment, oversamplingAttachment;
+    std::unique_ptr<SliderAttachment> qualityAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuroraD80AudioProcessorEditor)
 };

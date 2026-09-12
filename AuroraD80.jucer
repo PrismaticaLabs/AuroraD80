@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="mmKjuO" name="AuroraD80" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.0.0"
-              pluginFormats="buildAU,buildVST3" companyName="Prismatica Labs"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.0.1"
+              pluginFormats="buildAU,buildVST3,buildStandalone" companyName="Prismatica Labs"
               companyWebsite="www.prismaticalabs.com" bundleIdentifier="com.prismaticalabs.aurorad80"
               companyEmail="support@prismaticalabs.com">
   <MAINGROUP id="VGvqNE" name="AuroraD80">
@@ -14,6 +14,33 @@
       <FILE id="KB52G7" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="pEm43l" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+    <GROUP id="{7A8B9C0D-1111-2222-3333-444455556666}" name="Resources">
+      <FILE id="resChassis" name="chassis.png" compile="0" resource="1" file="Resources/chassis.png"/>
+      <FILE id="resHeader" name="header.png" compile="0" resource="1" file="Resources/header.png"/>
+      <FILE id="resHeaderBrand" name="header_brand.svg" compile="0" resource="1" file="Resources/header_brand.svg"/>
+      <FILE id="resDisplay" name="display.png" compile="0" resource="1" file="Resources/display.png"/>
+      <FILE id="resInputMeter" name="input_meter.png" compile="0" resource="1" file="Resources/input_meter.png"/>
+      <FILE id="resOutputMeter" name="output_meter.png" compile="0" resource="1" file="Resources/output_meter.png"/>
+      <FILE id="resDelayCore" name="delay_core.png" compile="0" resource="1" file="Resources/delay_core.png"/>
+      <FILE id="resToneStereo" name="tone_stereo.png" compile="0" resource="1" file="Resources/tone_stereo.png"/>
+      <FILE id="resModCharacter" name="mod_character.png" compile="0" resource="1" file="Resources/mod_character.png"/>
+      <FILE id="resUtility" name="utility_bar.png" compile="0" resource="1" file="Resources/utility_bar.png"/>
+      <FILE id="resLegacyUtility" name="utility_bar_legacy.png" compile="0" resource="1" file="Resources/utility_bar_legacy.png"/>
+      <FILE id="resPreset" name="preset_bar.png" compile="0" resource="1" file="Resources/preset_bar.png"/>
+      <FILE id="resKnobBody" name="knob_body.png" compile="0" resource="1" file="Resources/knob_body.png"/>
+      <FILE id="resKnobTicks" name="knob_ticks.svg" compile="0" resource="1" file="Resources/knob_ticks.svg"/>
+      <FILE id="resKnobShadow" name="knob_shadow.svg" compile="0" resource="1" file="Resources/knob_shadow.svg"/>
+      <FILE id="resKnobBezel" name="knob_bezel.svg" compile="0" resource="1" file="Resources/knob_bezel.svg"/>
+      <FILE id="resKnobPointerGlow" name="knob_pointer_glow.svg" compile="0" resource="1" file="Resources/knob_pointer_glow.svg"/>
+      <FILE id="resKnobPointer" name="knob_pointer.svg" compile="0" resource="1" file="Resources/knob_pointer.svg"/>
+      <FILE id="resKnobPointerHighlight" name="knob_pointer_highlight.svg" compile="0" resource="1" file="Resources/knob_pointer_highlight.svg"/>
+      <FILE id="resFreezeIcon" name="freeze_icon.svg" compile="0" resource="1" file="Resources/freeze_icon.svg"/>
+      <FILE id="resBypassIcon" name="bypass_icon.svg" compile="0" resource="1" file="Resources/bypass_icon.svg"/>
+      <FILE id="resBreeSerif" name="BreeSerif-Regular.ttf" compile="0" resource="1" file="Resources/BreeSerif-Regular.ttf"/>
+      <FILE id="resArimo" name="Arimo.ttf" compile="0" resource="1" file="Resources/Arimo.ttf"/>
+      <FILE id="resBreeLicense" name="BreeSerif-OFL.txt" compile="0" resource="0" file="Resources/BreeSerif-OFL.txt"/>
+      <FILE id="resArimoLicense" name="Arimo-OFL.txt" compile="0" resource="0" file="Resources/Arimo-OFL.txt"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>
@@ -35,7 +62,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" enablePluginBinaryCopyStep="1">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="AuroraD80"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="AuroraD80"/>
